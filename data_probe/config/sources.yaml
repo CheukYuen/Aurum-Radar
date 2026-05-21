@@ -1,0 +1,89 @@
+news:
+  - name: Google News – Gold Jewellery SG
+    market: Singapore
+    url: https://news.google.com/rss/search?q=gold+jewellery+Singapore&hl=en-SG&gl=SG&ceid=SG:en
+    method: rss
+  - name: Google News – Luxury Jewelry SG
+    market: Singapore
+    url: https://news.google.com/rss/search?q=luxury+jewelry+Singapore&hl=en-SG&gl=SG&ceid=SG:en
+    method: rss
+  - name: Google News – Gold Price SG
+    market: Singapore
+    url: https://news.google.com/rss/search?q=gold+price+Singapore+jeweller&hl=en-SG&gl=SG&ceid=SG:en
+    method: rss
+
+competitors:
+  - brand: Tiffany
+    market: Singapore
+    url: https://www.tiffany.com/jewelry/
+    method: html
+  - brand: Cartier
+    market: Singapore
+    url: https://www.cartier.com/en-sg/collections/jewellery.html
+    method: html
+  - brand: Chow Tai Fook
+    market: Singapore
+    url: https://www.chowtaifook.com/en/collections/jewellery
+    method: html
+
+platform_policy:
+  - platform: Shopee
+    market: Singapore
+    method: html_multi
+    urls:
+      - https://help.shopee.sg/portal/4/article/77151-Prohibited%20and%20Restricted%20Items%20Policy
+      - https://help.shopee.sg/portal/4/article/77211-List%20of%20Prohibited%20Products
+      - https://help.shopee.sg/portal/4/article/77154-Shopee%20Advertising%20Policy
+      - https://help.shopee.sg/portal/10/article/191914-Commissions%20Structure%20%28W.e.f.%202%20January%202026%29
+  - platform: Lazada
+    market: Singapore
+    url: https://news.google.com/rss/search?q=Lazada+Singapore+seller+policy+fee+category&hl=en-SG&gl=SG&ceid=SG:en
+    method: rss
+
+regulations:
+  - name: Singapore Customs
+    market: Singapore
+    url: https://www.customs.gov.sg/
+    method: html
+  - name: Monetary Authority of Singapore
+    market: Singapore
+    url: https://www.mas.gov.sg/regulation/precious-stones-and-precious-metals
+    method: html
+
+market_data:
+  gold:
+    provider: yahoo_finance
+    symbol: "GC=F"
+    currency: USD
+    fallback_provider: goldapi
+  fx:
+    provider: yahoo_finance
+    pairs:
+      - symbol: "USDSGD=X"
+        base: USD
+        target: SGD
+      - symbol: "USDCNY=X"
+        base: USD
+        target: CNY
+      - symbol: "USDHKD=X"
+        base: USD
+        target: HKD
+    fallback_provider: exchangerate
+
+malls:
+  - name: Marina Bay Sands
+    market: Singapore
+    url: https://news.google.com/rss/search?q=%22Marina+Bay+Sands%22+jewellery+OR+watch+OR+luxury+OR+event&hl=en-SG&gl=SG&ceid=SG:en
+    method: rss
+  - name: Ion Orchard
+    market: Singapore
+    url: https://news.google.com/rss/search?q=%22ION+Orchard%22+jewellery+OR+watch+OR+luxury+OR+popup&hl=en-SG&gl=SG&ceid=SG:en
+    method: rss
+  - name: Ion Orchard Events
+    market: Singapore
+    url: https://www.ionorchard.com/en/events.html
+    method: html
+  - name: Paragon
+    market: Singapore
+    url: https://news.google.com/rss/search?q=%22Paragon%22+Singapore+jewellery+OR+luxury+OR+watch+OR+event&hl=en-SG&gl=SG&ceid=SG:en
+    method: rss
