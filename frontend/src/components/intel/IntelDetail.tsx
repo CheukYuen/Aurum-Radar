@@ -86,6 +86,30 @@ export default function IntelDetail({ e, onClose }: { e: IntelEvent; onClose: ()
         </svg>
       </div>
 
+      {/* Agent processing chain */}
+      <div style={{ marginBottom: 16 }}>
+        <div style={{ fontSize: 10.5, letterSpacing: '.12em', color: 'var(--ink-3)', textTransform: 'uppercase', fontWeight: 600, marginBottom: 8 }}>
+          Agent 处理链路
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 0 }}>
+          {['原始信息', '去重筛选', '事件提炼', '影响判断', '来源引用'].map((step, i, arr) => (
+            <div key={i} style={{ display: 'flex', alignItems: 'center' }}>
+              <div style={{
+                padding: '5px 10px',
+                background: i === arr.length - 1 ? 'var(--gold-tint)' : 'var(--ivory)',
+                border: `1px solid ${i === arr.length - 1 ? 'var(--line-strong)' : 'var(--line-soft)'}`,
+                borderRadius: 8,
+                fontSize: 11, fontWeight: 600,
+                color: i === arr.length - 1 ? 'var(--gold-2)' : 'var(--ink-3)',
+              }}>{step}</div>
+              {i < arr.length - 1 && (
+                <span style={{ fontSize: 11, color: 'var(--ink-4)', margin: '0 3px' }}>→</span>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+
       <DetailSection icon="clipboard" title="事件摘要">
         <div style={{ fontSize: 13.5, color: 'var(--ink-2)', lineHeight: 1.65 }}>{e.summary}</div>
       </DetailSection>
@@ -93,6 +117,25 @@ export default function IntelDetail({ e, onClose }: { e: IntelEvent; onClose: ()
       <DetailSection icon="trending" title="潜在影响">
         <ImpactBlock items={e.impact} />
       </DetailSection>
+
+      {/* Agent judgment block */}
+      <div style={{ marginBottom: 16, padding: '12px 14px', background: 'linear-gradient(135deg, var(--indigo-tint), rgba(255,252,246,.8))', border: '1px solid rgba(107,122,158,.22)', borderRadius: 10 }}>
+        <div style={{ fontSize: 11, fontWeight: 700, color: '#4A597D', letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: 8 }}>
+          Agent 判断依据
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '4px 12px', fontSize: 12, color: 'var(--ink-2)' }}>
+          <span style={{ color: 'var(--ink-4)' }}>事件分类:</span><span style={{ fontWeight: 600, color: 'var(--ink-2)' }}>{e.cat}动态</span>
+          <span style={{ color: 'var(--ink-4)' }}>影响方向:</span>
+          <span style={{ fontWeight: 600, color: e.priority === 'high' ? 'var(--clay-deep)' : 'var(--ink-2)' }}>
+            {e.priority === 'high' ? '风险上升' : '需持续关注'}
+          </span>
+          <span style={{ color: 'var(--ink-4)' }}>影响对象:</span><span>高端珠宝品牌</span>
+          <span style={{ color: 'var(--ink-4)' }}>置信度:</span>
+          <span className={`chip ${e.priority === 'high' ? 'clay' : 'bone'}`} style={{ justifySelf: 'start' }}>
+            {e.priority === 'high' ? '中高' : '中'}
+          </span>
+        </div>
+      </div>
 
       <DetailSection icon="globe" title="关联市场">
         <div className="flex flex-wrap gap-2">
