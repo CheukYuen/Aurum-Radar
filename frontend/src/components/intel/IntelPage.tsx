@@ -1,8 +1,9 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import EventCard from './EventCard'
 import IntelDetail from './IntelDetail'
 import Icon from '../ui/Icon'
-import { EVENTS } from '../../api/mockData'
+import { fetchEvents, fetchDashboardSummary } from '../../api'
+import type { DashboardSummary, IntelEvent } from '../../api'
 
 const TABS = ['全部', '竞争', '产品', '社媒', '法规', '渠道']
 
@@ -40,9 +41,22 @@ function StatCard({ icon, label, value, unit, delta, deltaKind = 'sage', sub }: 
 
 export default function IntelPage() {
   const [tab, setTab] = useState('全部')
-  const [activeId, setActiveId] = useState('e1')
-  const filtered = tab === '全部' ? EVENTS : EVENTS.filter(e => e.cat === tab)
-  const active = EVENTS.find(e => e.id === activeId) ?? EVENTS[0]!
+  const [events, setEvents] = useState<IntelEvent[]>([])
+  const [activeId, setActiveId] = useState<string>('')
+  const [summary, setSummary] = useState<DashboardSummary | null>(null)
+
+  useEffect(() => {
+    fetchDashboardSummary().then(setSummary).catch(console.error)
+  }, [])
+
+  useEffect(() => {
+    fetchEvents(tab).then(res => {
+      setEvents(res.items)
+      if (!activeId && res.items.length > 0) setActiveId(res.items[0]!.id)
+    }).catch(console.error)
+  }, [tab])
+
+  const active = events.find(e => e.id === activeId) ?? events[0]
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '1fr 460px', gap: 18, padding: 22 }}>
@@ -54,9 +68,15 @@ export default function IntelPage() {
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14 }}>
-          <StatCard icon="feed"     label="今日新增情报" value="28" unit="条" sub="较昨日" delta="+12" deltaKind="sage" />
-          <StatCard icon="alert"    label="高优先级事件" value="7"  unit="条" sub="需重点关注" deltaKind="clay" />
-          <StatCard icon="bookmark" label="待跟踪事项"   value="15" unit="项" sub="较昨日" delta="+3" deltaKind="sage" />
+          <StatCard icon="feed"     label="今日新增情报"
+            value={String(summary?.events_today ?? '—')} unit="条"
+            sub="较昨日" delta={summary ? `+${summary.events_today_delta}` : undefined} deltaKind="sage" />
+          <StatCard icon="alert"    label="高优先级事件"
+            value={String(summary?.high_priority_events ?? '—')} unit="条"
+            sub="需重点关注" deltaKind="clay" />
+          <StatCard icon="bookmark" label="待跟踪事项"
+            value={String(summary?.pending_actions ?? '—')} unit="项"
+            sub="较昨日" delta={summary ? `+${summary.pending_actions_delta}` : undefined} deltaKind="sage" />
         </div>
 
         <div className="flex justify-between items-center flex-wrap gap-3">
@@ -81,16 +101,18 @@ export default function IntelPage() {
         </div>
 
         <div className="flex flex-col gap-2">
-          {filtered.map(e => (
+          {events.map(e => (
             <EventCard key={e.id} e={e} active={e.id === activeId} onClick={setActiveId} />
           ))}
         </div>
       </div>
 
       {/* Right detail — sticky */}
-      <div style={{ position: 'sticky', top: 18, maxHeight: 'calc(100vh - 140px)' }}>
-        <IntelDetail e={active} onClose={() => {}} />
-      </div>
+      {active && (
+        <div style={{ position: 'sticky', top: 18, maxHeight: 'calc(100vh - 140px)' }}>
+          <IntelDetail e={active} onClose={() => {}} />
+        </div>
+      )}
     </div>
   )
 }
