@@ -5,172 +5,241 @@ interface DailyBriefingDrawerProps {
   onClose: () => void
 }
 
-function Section({ icon, title, children }: { icon: string; title: string; children: React.ReactNode }) {
+// ── Section header ───────────────────────────────────────────────
+function SectionHeader({ title, sub }: { title: string; sub: string }) {
   return (
-    <div>
-      <div className="flex items-center gap-2" style={{ marginBottom: 10 }}>
-        <span style={{ color: 'var(--gold-2)' }}><Icon name={icon} size={14} /></span>
-        <span style={{ fontFamily: 'var(--font-serif)', fontSize: 15, fontWeight: 600, color: 'var(--ink-1)' }}>
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+      <div className="flex items-center gap-2">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+          <path d="M6 9l6-6 6 6-6 12z" fill="var(--gold-1)" stroke="var(--gold-2)" strokeWidth="1" />
+          <path d="M3 9h18M9 3l3 6 3-6" stroke="var(--gold-2)" strokeWidth="1.2" strokeLinecap="round" />
+        </svg>
+        <span style={{ fontFamily: 'var(--font-serif)', fontSize: 20, fontWeight: 600, color: 'var(--ink-1)' }}>
           {title}
         </span>
       </div>
-      {children}
+      <span style={{ fontSize: 10.5, fontWeight: 600, letterSpacing: '.18em', color: 'var(--ink-4)', textTransform: 'uppercase' }}>
+        {sub}
+      </span>
     </div>
   )
 }
 
-function ImpactRow({ kind, label, text }: { kind: string; label: string; text: string }) {
+// ── Market card ──────────────────────────────────────────────────
+const STATUS_CHIP: Record<string, string> = {
+  '机会增强': 'sage',
+  '风险升温': 'clay',
+  '法规变化': 'indigo',
+  '竞争加剧': 'bone',
+}
+
+function MarketCard({ name, sub, status, desc, delay }: { name: string; sub: string; status: string; desc: string; delay: number }) {
   return (
     <div style={{
-      padding: '10px 14px', display: 'flex', gap: 10, alignItems: 'flex-start',
-      background: 'var(--ivory)', border: '1px solid var(--line-soft)', borderRadius: 10,
+      display: 'flex', alignItems: 'center', gap: 16,
+      padding: '16px 18px',
+      background: 'var(--pearl)', border: '1px solid var(--line-soft)', borderRadius: 14,
+      animation: `item-fade-up 0.4s ease both`,
+      animationDelay: `${delay}ms`,
     }}>
-      <span className={`chip ${kind}`} style={{ flexShrink: 0 }}>{label}</span>
-      <span style={{ fontSize: 13, color: 'var(--ink-2)', lineHeight: 1.5 }}>{text}</span>
+      <div style={{ minWidth: 90 }}>
+        <div style={{ fontFamily: 'var(--font-serif)', fontSize: 20, fontWeight: 600, color: 'var(--ink-1)', lineHeight: 1.2 }}>{name}</div>
+        <div style={{ fontSize: 10, letterSpacing: '.14em', color: 'var(--ink-4)', textTransform: 'uppercase', marginTop: 2 }}>{sub}</div>
+      </div>
+      <span className={`chip ${STATUS_CHIP[status] ?? 'bone'}`} style={{ padding: '4px 12px', fontSize: 12, fontWeight: 700, flexShrink: 0 }}>{status}</span>
+      <span style={{ fontSize: 13.5, color: 'var(--ink-2)', lineHeight: 1.5, flex: 1 }}>{desc}</span>
     </div>
   )
 }
 
+// ── Signal change row ────────────────────────────────────────────
+const CAT_ICONS: Record<string, string> = {
+  竞争: 'users', 产品: 'diamond', 平台: 'store', 社媒: 'broadcast', 法规: 'shield',
+}
+const CAT_CHIP: Record<string, string> = {
+  竞争: 'clay', 产品: 'gold', 平台: 'sage', 社媒: 'plum', 法规: 'indigo',
+}
+
+function SignalRow({ cat, text, delay }: { cat: string; text: string; delay: number }) {
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: 12,
+      padding: '14px 18px',
+      background: 'var(--pearl)', border: '1px solid var(--line-soft)', borderRadius: 12,
+      animation: `item-fade-up 0.4s ease both`,
+      animationDelay: `${delay}ms`,
+    }}>
+      <div style={{
+        width: 32, height: 32, borderRadius: 16, flexShrink: 0,
+        background: 'var(--gold-wash)', border: '1px solid var(--line-soft)',
+        display: 'grid', placeItems: 'center', color: 'var(--gold-2)',
+      }}>
+        <Icon name={CAT_ICONS[cat] ?? 'info'} size={15} />
+      </div>
+      <span className={`chip ${CAT_CHIP[cat] ?? 'bone'}`} style={{ padding: '3px 10px', fontSize: 12, fontWeight: 700, flexShrink: 0 }}>{cat}</span>
+      <span style={{ fontSize: 13.5, color: 'var(--ink-2)', lineHeight: 1.5 }}>{text}</span>
+    </div>
+  )
+}
+
+// ── Impact card (3-column) ───────────────────────────────────────
+function ImpactCard({ kind, text, delay }: { kind: 'opportunity' | 'risk' | 'watch'; text: string; delay: number }) {
+  const cfg = kind === 'opportunity'
+    ? { label: '机会', bg: 'linear-gradient(160deg, var(--sage-tint), #E8F0E4)', border: 'rgba(122,157,126,.28)', labelColor: 'var(--sage-deep)' }
+    : kind === 'risk'
+    ? { label: '风险', bg: 'linear-gradient(160deg, var(--clay-tint), #F4E6E2)', border: 'rgba(201,127,110,.28)', labelColor: 'var(--clay-deep)' }
+    : { label: '需关注', bg: 'var(--ivory)', border: 'var(--line-soft)', labelColor: 'var(--ink-3)' }
+  return (
+    <div style={{
+      flex: 1, padding: '14px 16px', borderRadius: 14,
+      background: cfg.bg, border: `1px solid ${cfg.border}`,
+      animation: `item-fade-up 0.4s ease both`,
+      animationDelay: `${delay}ms`,
+    }}>
+      <div style={{ fontSize: 12, fontWeight: 700, color: cfg.labelColor, marginBottom: 8 }}>{cfg.label}</div>
+      <div style={{ fontSize: 13, color: 'var(--ink-2)', lineHeight: 1.55 }}>{text}</div>
+    </div>
+  )
+}
+
+// ── Drawer ───────────────────────────────────────────────────────
 export default function DailyBriefingDrawer({ open, onClose }: DailyBriefingDrawerProps) {
   if (!open) return null
 
   return (
     <>
+      {/* Backdrop */}
       <div onClick={onClose} style={{
         position: 'fixed', inset: 0, zIndex: 50,
-        background: 'rgba(42, 36, 25, 0.32)',
+        background: 'rgba(42, 36, 25, 0.30)',
         backdropFilter: 'blur(2px)',
+        animation: 'backdrop-fade-in 0.25s ease both',
       }} />
+
+      {/* Drawer panel */}
       <div style={{
         position: 'fixed', top: 0, right: 0, bottom: 0, zIndex: 51,
-        width: 480,
-        background: 'var(--pearl)',
+        width: 560,
+        background: 'var(--ivory)',
         borderLeft: '1px solid var(--line)',
-        boxShadow: 'var(--shadow-lg)',
+        boxShadow: '-8px 0 40px rgba(120,92,40,.12)',
         display: 'flex', flexDirection: 'column',
-        overflowY: 'auto',
+        animation: 'drawer-slide-in 0.32s cubic-bezier(.22,.68,0,1.2) both',
       }}>
+
         {/* Header */}
         <div style={{
           padding: '22px 24px 18px',
+          background: 'linear-gradient(180deg, var(--pearl) 60%, rgba(255,252,244,.6))',
           borderBottom: '1px solid var(--line-soft)',
-          background: 'linear-gradient(180deg, rgba(255,252,244,.95), rgba(250,246,238,.6))',
-          position: 'sticky', top: 0, zIndex: 1, backdropFilter: 'blur(6px)',
+          flexShrink: 0,
         }}>
           <div className="flex justify-between items-start">
-            <div>
-              <div className="flex items-center gap-2" style={{ marginBottom: 6 }}>
-                <span style={{
-                  width: 7, height: 7, borderRadius: 4,
-                  background: 'var(--sage)', display: 'inline-block',
-                  boxShadow: '0 0 0 2px var(--sage-tint)',
-                }} />
-                <span style={{ fontSize: 11, color: 'var(--sage-deep)', fontWeight: 600, letterSpacing: '.1em', textTransform: 'uppercase' }}>
-                  Market Radar Agent · 自动生成
-                </span>
+            <div className="flex items-center gap-3">
+              <div style={{
+                width: 44, height: 44, borderRadius: 12,
+                background: 'linear-gradient(135deg, var(--gold-tint), var(--gold-wash))',
+                border: '1px solid var(--line)',
+                display: 'grid', placeItems: 'center', color: 'var(--gold-2)',
+              }}>
+                <Icon name="clipboard" size={22} />
               </div>
-              <h2 style={{ margin: 0, fontFamily: 'var(--font-serif)', fontSize: 22, fontWeight: 600, color: 'var(--ink-1)' }}>
-                每日战略简报
-              </h2>
-              <div style={{ fontSize: 12, color: 'var(--ink-3)', marginTop: 4 }}>
-                2026/05/21 09:30 · 基于公开信息自动生成
+              <div>
+                <h2 style={{ margin: 0, fontFamily: 'var(--font-serif)', fontSize: 24, fontWeight: 600, color: 'var(--ink-1)', lineHeight: 1.2 }}>
+                  每日战略简报
+                </h2>
               </div>
             </div>
             <button onClick={onClose} style={{
               background: 'transparent', border: '1px solid var(--line)',
-              borderRadius: 8, width: 32, height: 32,
-              color: 'var(--ink-3)', display: 'grid', placeItems: 'center', flexShrink: 0,
-            }}>
-              <Icon name="x" size={14} />
-            </button>
+              borderRadius: 8, width: 34, height: 34,
+              color: 'var(--ink-3)', display: 'grid', placeItems: 'center',
+              fontSize: 16, fontWeight: 400, cursor: 'pointer',
+            }}>×</button>
+          </div>
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 8,
+            marginTop: 10, fontSize: 13, color: 'var(--ink-3)',
+          }}>
+            <span style={{ fontFamily: 'var(--font-mono)' }}>2026/05/21 09:30</span>
+            <span style={{ color: 'var(--ink-5)' }}>·</span>
+            <span style={{ fontWeight: 600, letterSpacing: '.06em', color: 'var(--ink-4)', textTransform: 'uppercase', fontSize: 11.5 }}>Agent 自动生成</span>
+            <span style={{
+              width: 7, height: 7, borderRadius: 4,
+              background: 'var(--sage)', display: 'inline-block',
+              boxShadow: '0 0 0 2px var(--sage-tint)',
+            }} />
           </div>
         </div>
 
-        <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 20 }}>
+        {/* Scrollable content */}
+        <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 24 }}>
+
           {/* 今日重点市场 */}
-          <Section icon="globe" title="今日重点市场">
-            <div className="flex flex-col gap-2">
-              {[
-                { market: '新加坡', status: '机会增强', kind: 'sage' },
-                { market: '中东',   status: '风险升温', kind: 'clay' },
-                { market: '欧洲',   status: '法规变化', kind: 'indigo' },
-                { market: '北美',   status: '竞争加剧', kind: 'bone' },
-              ].map((m, i) => (
-                <div key={i} style={{
-                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                  padding: '10px 14px',
-                  background: 'var(--ivory)', border: '1px solid var(--line-soft)', borderRadius: 10,
-                }}>
-                  <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--ink-1)' }}>{m.market}</span>
-                  <span className={`chip ${m.kind}`}>{m.status}</span>
-                </div>
-              ))}
+          <div>
+            <SectionHeader title="今日重点市场" sub="Key Markets" />
+            <div className="flex flex-col gap-3">
+              <MarketCard name="新加坡" sub="Singapore"    status="机会增强" desc="高端商圈消费回暖，旅游零售向好"           delay={60}  />
+              <MarketCard name="中东"   sub="Middle East"  status="风险升温" desc="地缘与汇率波动，节日营销窗口收窄"         delay={100} />
+              <MarketCard name="欧洲"   sub="Europe"       status="法规变化" desc="贵金属供应链尽调指令进入合规倒计时"       delay={140} />
+              <MarketCard name="北美"   sub="N. America"   status="竞争加剧" desc="亚马逊珠宝品类流量扶持，DTC 品牌活跃"   delay={180} />
             </div>
-          </Section>
+          </div>
 
           {/* 关键变化 */}
-          <Section icon="trending" title="关键变化">
+          <div>
+            <SectionHeader title="关键变化" sub="Signal Changes" />
             <div className="flex flex-col gap-2">
-              {[
-                { dim: '竞争', text: 'LVMH 收购 Damiani，强化高端珠宝版图', kind: 'clay' },
-                { dim: '产品', text: '培育钻价格下行，高端天然钻需求分化', kind: 'gold' },
-                { dim: '平台', text: '亚马逊推出珠宝新品类流量扶持计划', kind: 'sage' },
-                { dim: '社媒', text: 'TikTok 上 Old Money 珠宝风热度持续上升', kind: 'plum' },
-                { dim: '法规', text: '欧盟强化贵金属供应链尽调要求', kind: 'indigo' },
-              ].map((c, i) => (
-                <div key={i} style={{
-                  padding: '10px 14px', display: 'flex', gap: 10, alignItems: 'flex-start',
-                  background: 'var(--ivory)', border: '1px solid var(--line-soft)', borderRadius: 10,
-                }}>
-                  <span className={`chip ${c.kind}`} style={{ flexShrink: 0, marginTop: 1 }}>{c.dim}</span>
-                  <span style={{ fontSize: 13, color: 'var(--ink-2)', lineHeight: 1.5 }}>{c.text}</span>
-                </div>
-              ))}
+              <SignalRow cat="竞争" text="Maison Aurelia 收购 Damasco，强化高端珠宝版图"      delay={220} />
+              <SignalRow cat="产品" text="培育钻价格继续下行，高端天然钻需求分化"              delay={250} />
+              <SignalRow cat="平台" text="亚马逊推出珠宝新品类流量扶持计划（90 天）"          delay={280} />
+              <SignalRow cat="社媒" text="TikTok #OldMoneyJewelry 话题环比 +38%"             delay={310} />
+              <SignalRow cat="法规" text="欧盟强化贵金属供应链尽职调查要求"                  delay={340} />
             </div>
-          </Section>
+          </div>
 
           {/* 业务影响判断 */}
-          <Section icon="target" title="业务影响判断">
-            <div className="flex flex-col gap-2">
-              <ImpactRow kind="sage"   label="机会"  text="新加坡高端商圈适合加大品牌曝光" />
-              <ImpactRow kind="clay"   label="风险"  text="欧洲合规成本可能提升" />
-              <ImpactRow kind="indigo" label="需关注" text="中东市场节日营销窗口与竞品投放节奏" />
+          <div>
+            <SectionHeader title="业务影响判断" sub="Business Impact" />
+            <div style={{ display: 'flex', gap: 12 }}>
+              <ImpactCard kind="opportunity" text="新加坡高端商圈适合加大品牌曝光与会员邀约" delay={380} />
+              <ImpactCard kind="risk"        text="欧洲合规成本可能提升，中小供应链集中度受影响" delay={410} />
+              <ImpactCard kind="watch"       text="中东市场节日营销窗口与竞品投放节奏" delay={440} />
             </div>
-          </Section>
-
-          {/* 建议后续行动 */}
-          <Section icon="clipboard" title="建议后续行动">
-            <div className="flex flex-col gap-2">
-              {[
-                { dept: '市场部',  text: '优先推进乌节路 / 滨海湾商圈投放' },
-                { dept: '产品部',  text: '关注轻奢与高端礼赠系列组合' },
-                { dept: '法务合规', text: '跟踪欧盟供应链尽调新规' },
-              ].map((a, i) => (
-                <div key={i} style={{
-                  padding: '10px 14px', display: 'flex', gap: 10, alignItems: 'center',
-                  background: 'linear-gradient(135deg, var(--gold-wash), var(--pearl-warm))',
-                  border: '1px solid var(--line)', borderRadius: 10,
-                }}>
-                  <span style={{
-                    padding: '2px 8px', borderRadius: 6, flexShrink: 0,
-                    background: 'var(--pearl)', border: '1px solid var(--line)',
-                    fontSize: 11, fontWeight: 700, color: 'var(--gold-2)',
-                  }}>{a.dept}</span>
-                  <span style={{ fontSize: 13, color: 'var(--ink-2)', lineHeight: 1.5 }}>{a.text}</span>
-                </div>
-              ))}
-            </div>
-          </Section>
-
-          <div style={{
-            fontSize: 11.5, color: 'var(--ink-3)', lineHeight: 1.65,
-            padding: '10px 14px',
-            background: 'var(--gold-wash)', borderRadius: 10,
-            border: '1px dashed var(--line-strong)',
-          }}>
-            <Icon name="info" size={11} style={{ color: 'var(--gold-2)', verticalAlign: '-1px', marginRight: 6 }} />
-            本简报由 Market Radar Agent 基于公开信息自动生成，仅供参考。请结合实际情况进行判断。
           </div>
+
+        </div>
+
+        {/* Bottom action bar */}
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '14px 24px',
+          background: 'var(--pearl)',
+          borderTop: '1px solid var(--line-soft)',
+          flexShrink: 0,
+        }}>
+          <button style={{
+            display: 'flex', alignItems: 'center', gap: 8,
+            padding: '10px 16px',
+            background: 'transparent', border: '1px solid var(--line)',
+            borderRadius: 10, fontSize: 13, fontWeight: 600, color: 'var(--ink-2)',
+            cursor: 'pointer',
+          }}>
+            <Icon name="source" size={15} />
+            查看情报来源
+          </button>
+          <button style={{
+            display: 'flex', alignItems: 'center', gap: 8,
+            padding: '10px 20px',
+            background: 'linear-gradient(135deg, var(--gold-3), var(--gold-1))',
+            border: '1px solid var(--gold-2)',
+            borderRadius: 10, fontSize: 13.5, fontWeight: 700, color: 'var(--pearl)',
+            boxShadow: '0 3px 10px rgba(184,145,80,.25), inset 0 1px 0 rgba(255,252,244,.3)',
+            cursor: 'pointer',
+          }}>
+            进入行动建议
+            <Icon name="right" size={14} />
+          </button>
         </div>
       </div>
     </>
