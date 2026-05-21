@@ -148,6 +148,15 @@ function BottomCard({ icon, title, children }: { icon: string; title: string; ch
   )
 }
 
+function SimTag({ label, value }: { label: string; value: string }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+      <span style={{ fontSize: 10.5, color: 'var(--ink-4)' }}>{label}:</span>
+      <span style={{ fontSize: 11, fontWeight: 600, color: '#4A597D' }}>{value}</span>
+    </div>
+  )
+}
+
 export default function MapInsightPage({ filters }: { filters: Filters }) {
   const [selected, setSelected] = useState('orchard')
   const regionName = REGION_DETAIL[selected]?.name ?? ''
@@ -162,6 +171,22 @@ export default function MapInsightPage({ filters }: { filters: Filters }) {
     }}>
       {/* Map */}
       <div className="card" style={{ padding: 20, gridColumn: '1 / 2', gridRow: '1 / 2' }}>
+        {/* Strategy simulation strip */}
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
+          padding: '8px 14px', marginBottom: 14,
+          background: 'linear-gradient(135deg, var(--indigo-tint), rgba(255,252,246,.8))',
+          border: '1px solid rgba(107,122,158,.2)', borderRadius: 10,
+          fontSize: 11.5,
+        }}>
+          <span style={{ fontWeight: 700, color: '#4A597D', letterSpacing: '.02em' }}>区域战略模拟</span>
+          <span style={{ color: 'var(--ink-4)' }}>|</span>
+          <SimTag label="模拟目标" value="提升高端客群触达" />
+          <SimTag label="模拟区域" value={regionName || '乌节路'} />
+          <SimTag label="模拟周期" value="未来 30 天" />
+          <SimTag label="数据来源" value="公开信息 + 行业报告 + 社媒趋势" />
+        </div>
+
         <div className="flex justify-between items-center flex-wrap" style={{ marginBottom: 14, gap: 12 }}>
           <div className="flex items-center flex-wrap" style={{ gap: 16 }}>
             <h3 className="facet-rule" style={{ margin: 0, fontFamily: 'var(--font-serif)', fontSize: 18, fontWeight: 600 }}>地图洞察</h3>

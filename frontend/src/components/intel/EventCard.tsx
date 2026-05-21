@@ -42,12 +42,16 @@ export default function EventCard({ e, active, onClick }: EventCardProps) {
       <div style={{ fontSize: 13, color: 'var(--ink-2)', lineHeight: 1.55, marginBottom: 10 }}>
         {e.summary}
       </div>
-      <div className="flex items-center gap-2" style={{ fontSize: 11.5, color: 'var(--ink-3)' }}>
-        <Icon name="source" size={12} />
-        <span>来源</span>
-        <span style={{ color: 'var(--ink-2)' }}>{e.source}</span>
-        <span style={{ color: 'var(--ink-4)' }}>|</span>
-        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11 }}>{e.srcDetail}</span>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+        <Icon name="source" size={12} style={{ color: 'var(--ink-4)' }} />
+        <span style={{ fontSize: 11.5, color: 'var(--ink-2)' }}>{e.source}</span>
+        <span style={{ color: 'var(--ink-4)', fontSize: 11 }}>|</span>
+        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10.5, color: 'var(--ink-3)' }}>{e.srcDetail}</span>
+        <span style={{ color: 'var(--ink-4)', fontSize: 11 }}>|</span>
+        <span className={`chip ${TAB_TONES[e.cat] ?? 'bone'}`} style={{ fontSize: 10, padding: '1px 7px' }}>影响: {e.cat}</span>
+        <span className={`chip ${e.priority === 'high' ? 'clay' : 'bone'}`} style={{ fontSize: 10, padding: '1px 7px' }}>
+          可信度: {e.priority === 'high' ? '高' : '中'}
+        </span>
       </div>
     </button>
   )
