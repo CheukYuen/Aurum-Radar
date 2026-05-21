@@ -1,0 +1,96 @@
+import { useState } from 'react'
+import EventCard from './EventCard'
+import IntelDetail from './IntelDetail'
+import Icon from '../ui/Icon'
+import { EVENTS } from '../../api/mockData'
+
+const TABS = ['全部', '竞争', '产品', '社媒', '法规', '渠道']
+
+function StatCard({ icon, label, value, unit, delta, deltaKind = 'sage', sub }: {
+  icon: string; label: string; value: string; unit: string;
+  delta?: string; deltaKind?: 'sage' | 'clay'; sub: string
+}) {
+  return (
+    <div className="card flex items-center gap-3" style={{ padding: 18 }}>
+      <div style={{
+        width: 56, height: 56, borderRadius: 14,
+        background: 'linear-gradient(135deg, var(--gold-tint), var(--gold-wash))',
+        border: '1px solid var(--line)',
+        display: 'grid', placeItems: 'center', color: 'var(--gold-2)', flexShrink: 0,
+        boxShadow: 'inset 0 1px 0 rgba(255,252,244,.7)',
+      }}>
+        <Icon name={icon} size={22} />
+      </div>
+      <div style={{ flex: 1 }}>
+        <div style={{ fontSize: 12.5, color: 'var(--ink-3)', marginBottom: 4 }}>{label}</div>
+        <div className="flex items-baseline gap-1.5">
+          <span className="num-display" style={{ fontSize: 30, color: 'var(--ink-1)' }}>{value}</span>
+          <span style={{ fontSize: 13, color: 'var(--ink-3)' }}>{unit}</span>
+        </div>
+        <div style={{ fontSize: 11.5, marginTop: 4, color: 'var(--ink-3)' }}>
+          {sub}
+          {delta && (
+            <span style={{ marginLeft: 8, color: deltaKind === 'sage' ? 'var(--sage-deep)' : 'var(--clay-deep)' }}>{delta}</span>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export default function IntelPage() {
+  const [tab, setTab] = useState('全部')
+  const [activeId, setActiveId] = useState('e1')
+  const filtered = tab === '全部' ? EVENTS : EVENTS.filter(e => e.cat === tab)
+  const active = EVENTS.find(e => e.id === activeId) ?? EVENTS[0]!
+
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: '1fr 460px', gap: 18, padding: 22 }}>
+      {/* Left */}
+      <div className="flex flex-col gap-4">
+        <div>
+          <h2 style={{ margin: '2px 0 4px', fontFamily: 'var(--font-serif)', fontSize: 26, fontWeight: 600 }}>情报中心</h2>
+          <div style={{ fontSize: 12.5, color: 'var(--ink-3)' }}>全球珠宝行业动态与深度情报，助力把握先机与决策</div>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14 }}>
+          <StatCard icon="feed"     label="今日新增情报" value="28" unit="条" sub="较昨日" delta="+12" deltaKind="sage" />
+          <StatCard icon="alert"    label="高优先级事件" value="7"  unit="条" sub="需重点关注" deltaKind="clay" />
+          <StatCard icon="bookmark" label="待跟踪事项"   value="15" unit="项" sub="较昨日" delta="+3" deltaKind="sage" />
+        </div>
+
+        <div className="flex justify-between items-center flex-wrap gap-3">
+          <div className="flex gap-1.5">
+            {TABS.map(t => (
+              <button key={t} onClick={() => setTab(t)}
+                style={{
+                  padding: '8px 16px',
+                  background: tab === t ? 'var(--gold-1)' : 'var(--pearl)',
+                  color: tab === t ? 'var(--pearl)' : 'var(--ink-2)',
+                  border: tab === t ? '1px solid var(--gold-2)' : '1px solid var(--line)',
+                  borderRadius: 999,
+                  fontSize: 12.5, fontWeight: 600,
+                  boxShadow: tab === t ? '0 2px 6px rgba(184,145,80,.25)' : 'none',
+                }}>{t}</button>
+            ))}
+          </div>
+          <div className="flex items-center gap-1.5" style={{ fontSize: 11.5, color: 'var(--ink-3)' }}>
+            <Icon name="info" size={12} style={{ color: 'var(--gold-2)' }} />
+            点击情报卡片 → 查看详情与引用来源
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-2">
+          {filtered.map(e => (
+            <EventCard key={e.id} e={e} active={e.id === activeId} onClick={setActiveId} />
+          ))}
+        </div>
+      </div>
+
+      {/* Right detail — sticky */}
+      <div style={{ position: 'sticky', top: 18, maxHeight: 'calc(100vh - 140px)' }}>
+        <IntelDetail e={active} onClose={() => {}} />
+      </div>
+    </div>
+  )
+}
