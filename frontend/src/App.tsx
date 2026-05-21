@@ -16,6 +16,7 @@ export default function App() {
     category: '全部品类',
   })
   const [briefingOpen, setBriefingOpen] = useState(false)
+  const [activeDept, setActiveDept] = useState('mkt')
 
   const handleNav = (id: PageId) => {
     setPage(id)
@@ -28,7 +29,7 @@ export default function App() {
     overview: <OverviewPage onNav={handleNav} onOpenBriefing={() => setBriefingOpen(true)} />,
     map:      <MapInsightPage filters={filters} />,
     intel:    <IntelPage />,
-    actions:  <ActionsPage />,
+    actions:  <ActionsPage activeDept={activeDept} onDeptChange={setActiveDept} />,
   }[page]
 
   return (
@@ -40,7 +41,12 @@ export default function App() {
           {PageComp}
         </main>
       </div>
-      <DailyBriefingDrawer open={briefingOpen} onClose={() => setBriefingOpen(false)} />
+      <DailyBriefingDrawer
+        open={briefingOpen}
+        onClose={() => setBriefingOpen(false)}
+        onNav={handleNav}
+        onNavToActions={(deptId) => { setActiveDept(deptId); handleNav('actions'); setBriefingOpen(false) }}
+      />
     </div>
   )
 }

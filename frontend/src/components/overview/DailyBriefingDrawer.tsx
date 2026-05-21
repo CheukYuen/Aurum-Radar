@@ -1,8 +1,12 @@
 import Icon from '../ui/Icon'
 
+import type { PageId } from '../../api/types'
+
 interface DailyBriefingDrawerProps {
   open: boolean
   onClose: () => void
+  onNav: (id: PageId) => void
+  onNavToActions: (deptId: string) => void
 }
 
 // ── Section header ───────────────────────────────────────────────
@@ -103,7 +107,7 @@ function ImpactCard({ kind, text, delay }: { kind: 'opportunity' | 'risk' | 'wat
 }
 
 // ── Drawer ───────────────────────────────────────────────────────
-export default function DailyBriefingDrawer({ open, onClose }: DailyBriefingDrawerProps) {
+export default function DailyBriefingDrawer({ open, onClose, onNav, onNavToActions }: DailyBriefingDrawerProps) {
   if (!open) return null
 
   return (
@@ -208,6 +212,54 @@ export default function DailyBriefingDrawer({ open, onClose }: DailyBriefingDraw
             </div>
           </div>
 
+          {/* 建议后续行动 */}
+          <div>
+            <SectionHeader title="建议后续行动" sub="Suggested Actions" />
+            <div className="flex flex-col gap-3">
+              {[
+                { dept: '市场部', deptId: 'mkt', text: '优先推进乌节路 / 滨海湾商圈投放，配套节日营销活动', delay: 460 },
+                { dept: '产品部', deptId: 'pdt', text: '关注轻奢与高端礼赠系列组合，启动 SKU 评估', delay: 490 },
+                { dept: '法务合规', deptId: 'law', text: '跟踪欧盟供应链尽调新规，启动合规倒排', delay: 520 },
+              ].map((a, i) => (
+                <div key={i} style={{
+                  display: 'flex', alignItems: 'center', gap: 14,
+                  padding: '14px 18px',
+                  background: 'var(--pearl)', border: '1px solid var(--line-soft)', borderRadius: 12,
+                  animation: `item-fade-up 0.4s ease both`,
+                  animationDelay: `${a.delay}ms`,
+                }}>
+                  <span style={{
+                    padding: '5px 12px', borderRadius: 20, flexShrink: 0,
+                    background: 'var(--ivory)', border: '1px solid var(--line)',
+                    fontSize: 12.5, fontWeight: 700, color: 'var(--ink-2)',
+                  }}>{a.dept}</span>
+                  <span style={{ fontSize: 13.5, color: 'var(--ink-2)', lineHeight: 1.5, flex: 1 }}>{a.text}</span>
+                  <button onClick={() => onNavToActions(a.deptId)} style={{
+                    display: 'flex', alignItems: 'center', gap: 4,
+                    background: 'transparent', border: 'none',
+                    fontSize: 13, fontWeight: 700, color: 'var(--gold-2)',
+                    cursor: 'pointer', flexShrink: 0, padding: '4px 0',
+                  }}>
+                    跳转 <Icon name="right" size={12} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Disclaimer */}
+          <div style={{
+            padding: '14px 16px',
+            background: 'var(--ivory)', border: '1px dashed var(--line-strong)', borderRadius: 12,
+            display: 'flex', alignItems: 'flex-start', gap: 10,
+            fontSize: 12.5, color: 'var(--ink-3)', lineHeight: 1.65,
+            animation: `item-fade-up 0.4s ease both`,
+            animationDelay: '560ms',
+          }}>
+            <Icon name="clipboard" size={14} style={{ color: 'var(--ink-4)', marginTop: 2, flexShrink: 0 }} />
+            <span>本简报由 Market Radar Agent 基于今日扫描的公开信息（行业报告、政府官网、新闻、社媒、电商平台公告）自动整合，每条判断均可追溯至「情报中心」原始来源。</span>
+          </div>
+
         </div>
 
         {/* Bottom action bar */}
@@ -218,7 +270,7 @@ export default function DailyBriefingDrawer({ open, onClose }: DailyBriefingDraw
           borderTop: '1px solid var(--line-soft)',
           flexShrink: 0,
         }}>
-          <button style={{
+          <button onClick={() => { onNav('intel'); onClose(); }} style={{
             display: 'flex', alignItems: 'center', gap: 8,
             padding: '10px 16px',
             background: 'transparent', border: '1px solid var(--line)',
@@ -228,7 +280,7 @@ export default function DailyBriefingDrawer({ open, onClose }: DailyBriefingDraw
             <Icon name="source" size={15} />
             查看情报来源
           </button>
-          <button style={{
+          <button onClick={() => onNavToActions('mkt')} style={{
             display: 'flex', alignItems: 'center', gap: 8,
             padding: '10px 20px',
             background: 'linear-gradient(135deg, var(--gold-3), var(--gold-1))',

@@ -40,8 +40,15 @@ function ActStat({ icon, label, value, unit, delta, deltaKind = 'sage', color }:
   )
 }
 
-export default function ActionsPage() {
-  const [active, setActive] = useState('mkt')
+interface ActionsPageProps {
+  activeDept?: string
+  onDeptChange?: (id: string) => void
+}
+
+export default function ActionsPage({ activeDept, onDeptChange }: ActionsPageProps = {}) {
+  const [localActive, setLocalActive] = useState('mkt')
+  const active = activeDept ?? localActive
+  const setActive = (id: string) => { setLocalActive(id); onDeptChange?.(id) }
   const d = DEPTS.find(x => x.id === active) ?? DEPTS[0]!
 
   return (
