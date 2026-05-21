@@ -10,10 +10,13 @@ frontend/node_modules/
 frontend/dist/
 frontend/.vite/
 
-# data_probe — Python 虚拟环境与抓取输出（体积大/含时效数据，不入库）
-data_probe/.venv/
+# Python
+__pycache__/
+*.pyc
+.venv/
+backend/.venv/
+
+# data_probe — 抓取输出（体积大/含时效数据，不入库）
 data_probe/output/raw/
 data_probe/output/normalized/
 data_probe/output/summary_*.json
-data_probe/__pycache__/
-data_probe/scripts/__pycache__/
