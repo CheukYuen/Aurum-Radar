@@ -2,9 +2,12 @@ import { CONTINENT_DOTS, COUNTRIES } from '../../api/mockData'
 import type { CountryNode, StatusKind } from '../../api/types'
 
 const STATUS_COLORS: Record<StatusKind, { fill: string; glow: string; label: string }> = {
-  high: { fill: '#7A9D7E', glow: 'rgba(122,157,126,.35)', label: '机会高' },
-  mid:  { fill: '#C8A569', glow: 'rgba(200,165,105,.35)', label: '机会中' },
-  risk: { fill: '#C97F6E', glow: 'rgba(201,127,110,.35)', label: '风险高' },
+  high:        { fill: '#7A9D7E', glow: 'rgba(122,157,126,.35)', label: '机会增强' },
+  mid:         { fill: '#C8A569', glow: 'rgba(200,165,105,.35)', label: '需持续观察' },
+  risk:        { fill: '#C97F6E', glow: 'rgba(201,127,110,.35)', label: '风险升温' },
+  competition: { fill: '#5B88B0', glow: 'rgba(91,136,176,.35)',  label: '竞争加剧' },
+  regulation:  { fill: '#6B7A9E', glow: 'rgba(107,122,158,.35)', label: '法规变化' },
+  watch:       { fill: '#A89776', glow: 'rgba(168,151,118,.3)',  label: '需持续观察' },
 }
 
 function Arc({ from, to, opacity = 0.5 }: { from: { x: number; y: number }; to: { x: number; y: number }; opacity?: number }) {

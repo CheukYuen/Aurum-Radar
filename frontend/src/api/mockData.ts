@@ -41,19 +41,19 @@ function generateContinentDots(): [number, number, number][] {
 export const CONTINENT_DOTS = generateContinentDots()
 
 export const COUNTRIES: CountryNode[] = [
-  { id: 'sg', name: '新加坡', sub: 'Singapore',  x: 1240, y: 460, status: 'high', size: 18 },
-  { id: 'eu', name: '欧洲',   sub: 'Europe',     x: 820,  y: 220, status: 'high', size: 16 },
-  { id: 'na', name: '北美',   sub: 'N. America', x: 280,  y: 240, status: 'mid',  size: 14 },
-  { id: 'me', name: '中东',   sub: 'Mid. East',  x: 990,  y: 320, status: 'risk', size: 14 },
-  { id: 'la', name: '拉美',   sub: 'LATAM',      x: 430,  y: 520, status: 'mid',  size: 12 },
-  { id: 'au', name: '澳洲',   sub: 'Oceania',    x: 1430, y: 580, status: 'mid',  size: 12 },
-  { id: 'jp', name: '日本',   sub: 'Japan',      x: 1380, y: 280, status: 'high', size: 14 },
-  { id: 'in', name: '印度',   sub: 'India',      x: 1080, y: 380, status: 'mid',  size: 12 },
+  { id: 'sg', name: '新加坡', sub: 'Singapore',  x: 1240, y: 460, status: 'high',        size: 18 },
+  { id: 'eu', name: '欧洲',   sub: 'Europe',     x: 820,  y: 220, status: 'regulation',  size: 16 },
+  { id: 'na', name: '北美',   sub: 'N. America', x: 280,  y: 240, status: 'competition', size: 14 },
+  { id: 'me', name: '中东',   sub: 'Mid. East',  x: 990,  y: 320, status: 'risk',        size: 14 },
+  { id: 'la', name: '拉美',   sub: 'LATAM',      x: 430,  y: 520, status: 'watch',       size: 12 },
+  { id: 'au', name: '澳洲',   sub: 'Oceania',    x: 1430, y: 580, status: 'watch',       size: 12 },
+  { id: 'jp', name: '日本',   sub: 'Japan',      x: 1380, y: 280, status: 'high',        size: 14 },
+  { id: 'in', name: '印度',   sub: 'India',      x: 1080, y: 380, status: 'competition', size: 12 },
 ]
 
 export const COUNTRY_DETAIL: Record<string, CountryDetail> = {
   sg: {
-    name: '新加坡', sub: 'Singapore', status: '机会高', statusKind: 'sage',
+    name: '新加坡', sub: 'Singapore', status: '机会增强', statusKind: 'sage',
     score: 82, competition: 4, competitionLabel: '中高',
     policy: '优', policyKind: 'sage', growth: '+12%',
     bullets: [
@@ -61,6 +61,12 @@ export const COUNTRY_DETAIL: Record<string, CountryDetail> = {
       { icon: 'scale',     text: '自由贸易枢纽，关税政策友好' },
       { icon: 'trending',  text: '电商渠道渗透率提升，线上销售增长显著' },
       { icon: 'broadcast', text: '旅游零售恢复，机场免税业务回暖' },
+    ],
+    triggers: ['旅游零售恢复', '高端珠宝消费升温', '电商渠道增长', '竞争品牌加大投放'],
+    impacts: [
+      { kind: 'opportunity', text: '高净值客群触达窗口扩大' },
+      { kind: 'risk',        text: '核心商圈竞争与租金压力上升' },
+      { kind: 'watch',       text: '节日营销与竞品活动节奏' },
     ],
   },
   eu: {

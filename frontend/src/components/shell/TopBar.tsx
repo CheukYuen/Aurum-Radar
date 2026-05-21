@@ -2,6 +2,54 @@ import DiamondMark from '../ui/DiamondMark'
 import Icon from '../ui/Icon'
 import type { Filters } from '../../api/types'
 
+// ── Agent status bar (top thin strip) ───────────────────────────
+
+function AgentBar({ onOpenBriefing }: { onOpenBriefing: () => void }) {
+  const items = [
+    { label: '今日扫描', value: '已完成', dot: 'sage' },
+    { label: '战略简报', value: '已生成', dot: 'sage' },
+    { label: '下次扫描', value: '明日 09:00', dot: 'bone' },
+    { label: null,       value: '公开信息', dot: 'bone' },
+  ]
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: 0,
+      padding: '5px 28px',
+      background: 'linear-gradient(90deg, rgba(250,242,221,.55), rgba(255,252,246,.45))',
+      borderBottom: '1px solid var(--line-soft)',
+      fontSize: 11.5,
+    }}>
+      {/* Agent name + status */}
+      <div className="flex items-center gap-2" style={{ paddingRight: 20, marginRight: 20, borderRight: '1px solid var(--line)' }}>
+        <span style={{
+          width: 7, height: 7, borderRadius: 4,
+          background: 'var(--sage)', display: 'inline-block',
+          boxShadow: '0 0 0 2px var(--sage-tint)',
+        }} />
+        <span style={{ fontWeight: 700, color: 'var(--ink-2)', letterSpacing: '.06em', textTransform: 'uppercase', fontSize: 11 }}>
+          Market Radar Agent
+        </span>
+        <span style={{ color: 'var(--sage-deep)', fontWeight: 600 }}>运行中</span>
+      </div>
+
+      {/* Status items */}
+      {items.map((it, i) => (
+        <div key={i} className="flex items-center gap-1.5" style={{ paddingRight: 20, marginRight: 20, borderRight: i < items.length - 1 ? '1px solid var(--line)' : 'none' }}>
+          <span style={{
+            width: 5, height: 5, borderRadius: 3,
+            background: it.dot === 'sage' ? 'var(--sage)' : 'var(--ink-4)',
+            display: 'inline-block',
+          }} />
+          {it.label && <span style={{ color: 'var(--ink-4)' }}>{it.label}</span>}
+          <span style={{ color: 'var(--ink-2)', fontWeight: 600 }}>{it.value}</span>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// ── Filter pill ──────────────────────────────────────────────────
+
 interface FilterPillProps {
   icon: string
   label: string
@@ -14,32 +62,34 @@ function FilterPill({ icon, label, value, onClick }: FilterPillProps) {
     <button onClick={onClick}
       style={{
         display: 'flex', alignItems: 'center', gap: 10,
-        padding: '10px 18px',
+        padding: '8px 16px',
         background: 'var(--pearl)',
         border: '1px solid var(--line)',
         borderRadius: 12,
         boxShadow: 'var(--shadow-sm), var(--shadow-inner)',
-        minWidth: 220, textAlign: 'left',
+        minWidth: 190, textAlign: 'left',
         transition: 'all .15s ease',
       }}
       onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--line-strong)')}
       onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--line)')}>
       <span style={{
-        width: 32, height: 32, borderRadius: 8,
+        width: 28, height: 28, borderRadius: 7,
         background: 'var(--gold-wash)',
         display: 'grid', placeItems: 'center',
         color: 'var(--gold-2)', border: '1px solid var(--line-soft)',
       }}>
-        <Icon name={icon} size={16} />
+        <Icon name={icon} size={14} />
       </span>
       <span style={{ flex: 1, lineHeight: 1.2 }}>
-        <div style={{ fontSize: 11, color: 'var(--ink-3)', letterSpacing: '.06em' }}>{label}</div>
-        <div style={{ fontSize: 13.5, color: 'var(--ink-1)', fontWeight: 600 }}>{value}</div>
+        <div style={{ fontSize: 10.5, color: 'var(--ink-3)', letterSpacing: '.06em' }}>{label}</div>
+        <div style={{ fontSize: 13, color: 'var(--ink-1)', fontWeight: 600 }}>{value}</div>
       </span>
-      <Icon name="chevron" size={14} style={{ color: 'var(--ink-4)' }} />
+      <Icon name="chevron" size={13} style={{ color: 'var(--ink-4)' }} />
     </button>
   )
 }
+
+// ── TopBar ───────────────────────────────────────────────────────
 
 interface TopBarProps {
   filters: Filters
@@ -47,85 +97,20 @@ interface TopBarProps {
   onOpenBriefing: () => void
 }
 
-function AgentStatusCapsule({ onOpenBriefing }: { onOpenBriefing: () => void }) {
-  return (
-    <div style={{
-      display: 'flex', alignItems: 'center', gap: 14,
-      padding: '8px 16px',
-      background: 'linear-gradient(135deg, rgba(250,242,221,.85), rgba(255,252,246,.9))',
-      border: '1px solid var(--line)',
-      borderRadius: 12,
-      boxShadow: 'var(--shadow-sm)',
-    }}>
-      {/* Status dot + name */}
-      <div className="flex items-center gap-2">
-        <span style={{
-          width: 7, height: 7, borderRadius: 4, flexShrink: 0,
-          background: 'var(--sage)',
-          boxShadow: '0 0 0 2px var(--sage-tint)',
-          animation: 'pulse 2.5s ease-in-out infinite',
-        }} />
-        <div>
-          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--ink-2)', letterSpacing: '.04em', lineHeight: 1.2 }}>
-            Market Radar Agent
-          </div>
-          <div style={{ fontSize: 10, color: 'var(--sage-deep)', fontWeight: 600, letterSpacing: '.06em' }}>
-            运行中
-          </div>
-        </div>
-      </div>
-
-      <div style={{ width: 1, height: 28, background: 'var(--line-strong)' }} />
-
-      {/* Status lines */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'auto auto', columnGap: 12, rowGap: 2 }}>
-        <StatusLine dot="sage" text="今日扫描已完成" />
-        <StatusLine dot="sage" text="战略简报已生成" />
-        <StatusLine dot="bone" text="下次扫描：明日 09:00" />
-        <StatusLine dot="bone" text="数据来源：公开信息" />
-      </div>
-
-      <div style={{ width: 1, height: 28, background: 'var(--line-strong)' }} />
-
-      {/* Briefing button */}
-      <button onClick={onOpenBriefing} style={{
-        padding: '6px 12px',
-        background: 'linear-gradient(135deg, var(--gold-1), var(--gold-2))',
-        border: '1px solid var(--gold-2)',
-        borderRadius: 8,
-        color: 'var(--pearl)',
-        fontSize: 11.5, fontWeight: 700, letterSpacing: '.02em',
-        boxShadow: '0 2px 6px rgba(184,145,80,.22), inset 0 1px 0 rgba(255,252,244,.3)',
-        whiteSpace: 'nowrap', flexShrink: 0,
-      }}>
-        查看今日战略简报
-      </button>
-    </div>
-  )
-}
-
-function StatusLine({ dot, text }: { dot: 'sage' | 'bone'; text: string }) {
-  return (
-    <div className="flex items-center gap-1.5">
-      <span style={{
-        width: 5, height: 5, borderRadius: 3, flexShrink: 0,
-        background: dot === 'sage' ? 'var(--sage)' : 'var(--ink-4)',
-      }} />
-      <span style={{ fontSize: 10.5, color: 'var(--ink-3)', whiteSpace: 'nowrap' }}>{text}</span>
-    </div>
-  )
-}
-
 export default function TopBar({ filters, setFilters, onOpenBriefing }: TopBarProps) {
   return (
-    <header style={{
-      padding: '14px 32px 14px 28px',
-      borderBottom: '1px solid var(--line-soft)',
-      background: 'linear-gradient(180deg, rgba(255,252,244,.7), rgba(250,246,238,.3))',
-      backdropFilter: 'blur(6px)',
-      position: 'relative', zIndex: 5,
-    }}>
-      <div className="flex items-center justify-between" style={{ gap: 16, flexWrap: 'wrap' }}>
+    <header style={{ borderBottom: '1px solid var(--line-soft)', position: 'relative', zIndex: 5 }}>
+      {/* Thin agent status bar */}
+      <AgentBar onOpenBriefing={onOpenBriefing} />
+
+      {/* Main header row */}
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        padding: '14px 28px',
+        background: 'linear-gradient(180deg, rgba(255,252,244,.8), rgba(250,246,238,.4))',
+        backdropFilter: 'blur(6px)',
+        gap: 16, flexWrap: 'wrap',
+      }}>
         {/* Left: Logo + title */}
         <div className="flex items-center gap-3">
           <DiamondMark size={40} />
@@ -142,12 +127,9 @@ export default function TopBar({ filters, setFilters, onOpenBriefing }: TopBarPr
           </div>
         </div>
 
-        {/* Center: Agent status */}
-        <AgentStatusCapsule onOpenBriefing={onOpenBriefing} />
-
-        {/* Right: Filters */}
-        <div className="flex gap-2.5">
-          <FilterPill icon="calendar" label="时间范围 / TIME"
+        {/* Right: Filters + CTA */}
+        <div className="flex items-center gap-3">
+          <FilterPill icon="calendar" label="时间 / TIME"
             value={filters.time}
             onClick={() => setFilters(f => ({
               ...f,
@@ -161,6 +143,23 @@ export default function TopBar({ filters, setFilters, onOpenBriefing }: TopBarPr
           <FilterPill icon="tag" label="品类 / CATEGORY"
             value={filters.category}
             onClick={() => setFilters(f => ({ ...f, category: f.category === '全部品类' ? '高端品类' : '全部品类' }))} />
+
+          {/* Gold CTA */}
+          <button onClick={onOpenBriefing} style={{
+            display: 'flex', alignItems: 'center', gap: 8,
+            padding: '10px 20px',
+            background: 'linear-gradient(135deg, var(--gold-1), var(--gold-2))',
+            border: '1px solid var(--gold-2)',
+            borderRadius: 12,
+            color: 'var(--pearl)',
+            fontSize: 13.5, fontWeight: 700, letterSpacing: '.02em',
+            boxShadow: '0 4px 12px rgba(184,145,80,.3), inset 0 1px 0 rgba(255,252,244,.4)',
+            whiteSpace: 'nowrap',
+          }}>
+            <Icon name="calendar" size={15} />
+            查看今日战略简报
+            <Icon name="right" size={13} />
+          </button>
         </div>
       </div>
     </header>

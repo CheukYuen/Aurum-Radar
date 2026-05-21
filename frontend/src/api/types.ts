@@ -8,7 +8,7 @@ export interface Filters {
 
 // ── Overview types ──────────────────────────────────────────────
 
-export type StatusKind = 'high' | 'mid' | 'risk'
+export type StatusKind = 'high' | 'mid' | 'risk' | 'competition' | 'regulation' | 'watch'
 export type ChipTone = 'sage' | 'clay' | 'gold' | 'indigo' | 'plum' | 'bone'
 
 export interface CountryNode {
@@ -26,6 +26,11 @@ export interface CountryBullet {
   text: string
 }
 
+export interface CountryImpact {
+  kind: 'opportunity' | 'risk' | 'watch'
+  text: string
+}
+
 export interface CountryDetail {
   name: string
   sub: string
@@ -38,6 +43,8 @@ export interface CountryDetail {
   policyKind: ChipTone
   growth: string
   bullets: CountryBullet[]
+  triggers?: string[]
+  impacts?: CountryImpact[]
 }
 
 // ── Map insight types ───────────────────────────────────────────
