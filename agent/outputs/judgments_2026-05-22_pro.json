@@ -1,0 +1,79 @@
+{
+  "markets": {
+    "Singapore": {
+      "state": "opportunity_rising",
+      "key_changes": [
+        "Swatch × Audemars Piguet Royal Pop launch triggered mass consumer frenzy with all-night queues, store closures due to overcrowding, and fights among buyers",
+        "Resale prices for the collaboration watch surged immediately, indicating strong secondary-market demand for luxury-accessible crossover products",
+        "Product category trend shows 'rising' trajectory overall across markets, with Singapore as a key epicenter of consumer excitement"
+      ],
+      "opportunities": [
+        "High consumer appetite for limited-edition luxury collaborations creates opportunity for jewelry brands to launch exclusive Singapore drops",
+        "Strong resale market dynamics suggest affluent Singaporean consumers view limited pieces as investment assets — target with collectible fine jewelry",
+        "Media attention on Singapore as a luxury 'drop culture' hub amplifies brand visibility for any new product introductions in the market"
+      ],
+      "risks": [
+        "Overcrowding and safety incidents at drops could lead to regulatory scrutiny on retail crowd management",
+        "Resale speculation may distort brand positioning if primary-channel pricing is perceived as undervalued"
+      ],
+      "watch_items": [
+        "Monitor if similar luxury 'drop culture' events spread to fine jewelry segment in Singapore",
+        "Track whether regulatory response (crowd control rules) impacts future launch strategies"
+      ],
+      "evidence_event_ids": [
+        17,
+        9
+      ]
+    },
+    "Dubai": {
+      "state": "risk_rising",
+      "key_changes": [
+        "IIF warns Dubai may enter a 'small recession' due to the Iran war, impacting tourism, trade, and foreign direct investment",
+        "Consumer confidence among tourists — a core luxury demographic in Dubai — expected to decline for several months",
+        "Shipping and supply chain disruptions through the Strait of Hormuz are raising costs and delays for luxury goods imports"
+      ],
+      "opportunities": [
+        "Local UAE nationals with high net worth may shift spending from travel to domestic luxury consumption if travel decreases",
+        "Potential to target resident affluent population as a buffer against tourism-dependent revenue declines"
+      ],
+      "risks": [
+        "Tourist footfall — the primary driver of Dubai luxury retail — is expected to drop significantly",
+        "Broader economic contraction may reduce discretionary spending among mid-to-high income residents",
+        "Geopolitical uncertainty could delay new store openings and marketing investments"
+      ],
+      "watch_items": [
+        "Monitor tourist arrival data and luxury mall footfall (Dubai Mall, Mall of the Emirates) over next 4-8 weeks",
+        "Track oil price fluctuations and their impact on UAE wealth effect",
+        "Observe if luxury brands pivot marketing toward local/resident HNWIs"
+      ],
+      "evidence_event_ids": [
+        24,
+        12
+      ]
+    },
+    "Milan": {
+      "state": "watch",
+      "key_changes": [
+        "No significant luxury jewelry events recorded in the database in the past 7 days — market is operating under normal conditions",
+        "Milan Design Week 2026 concluded in late April, shifting focus from fleeting installations to sustained creative value",
+        "Richemont (Cartier, Van Cleef & Arpels) reported 13% sales growth with strong performance in Europe, signaling underlying health"
+      ],
+      "opportunities": [
+        "Richemont's strong performance suggests European luxury jewelry demand is robust — Milan as a flagship city benefits",
+        "Milan's positioning as a global design capital makes it an ideal launchpad for high-jewelry collections and brand collaborations",
+        "Aspirational shopper gap identified by Saint Laurent CEO presents opportunity for demi-fine jewelry brands to capture mid-market"
+      ],
+      "risks": [
+        "Saint Laurent CEO warns luxury sector is losing aspirational shoppers — mid-tier jewelry demand may soften",
+        "No major market-moving events means Milan may be in a holding pattern; lack of positive catalysts could lead to stagnation"
+      ],
+      "watch_items": [
+        "Watch for Vicenzaoro autumn edition sentiment and order data as a bellwether for Italian jewelry market health",
+        "Monitor European consumer confidence indices to gauge aspirational spending recovery",
+        "Track any new regulatory or tax changes in Italy affecting luxury goods"
+      ],
+      "evidence_event_ids": []
+    }
+  },
+  "cross_market_insight": "While Singapore surges on luxury drop-culture enthusiasm and Dubai faces geopolitical headwinds threatening its tourism-dependent luxury model, Milan remains a steady but quiet bellwether where the broader European luxury slowdown for aspirational buyers contrasts with resilient high-jewelry performance from houses like Cartier and Van Cleef & Arpels."
+}
