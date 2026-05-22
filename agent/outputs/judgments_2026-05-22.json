@@ -1,0 +1,75 @@
+{
+  "markets": {
+    "Singapore": {
+      "state": "opportunity_rising",
+      "key_changes": [
+        "Swatch x Audemars Piguet 'Royal Pop' launch triggered mass consumer frenzy, forced store closures, and drove resale prices to multiples of retail — demonstrating explosive luxury demand",
+        "Global luxury market showing signs of recovery in pockets, with Chanel reporting $19.3B revenue (+3%) driven by Europe and Americas"
+      ],
+      "opportunities": [
+        "Singapore's affluent consumer base shows ravenous appetite for limited-edition luxury collaborations — ideal test market for Asia-Pacific exclusive drops",
+        "High resale premium environment signals strong potential for secondary-market and investment-grade jewelry segments",
+        "Position Singapore as a launch hub for limited luxury collaborations targeting Southeast Asian HNWIs"
+      ],
+      "risks": [
+        "Consumer frenzy at launches creates reputational and safety risks if crowd management is inadequate",
+        "Resale speculation may distort brand positioning and alienate genuine collectors"
+      ],
+      "watch_items": [
+        "Monitor whether fine jewelry (not just watches) can trigger similar demand patterns in Singapore",
+        "Watch for regulatory or mall-level restrictions on launch-day crowd events",
+        "Track if the hype cycle sustains or fades as global luxury headwinds persist"
+      ],
+      "evidence_event_ids": [
+        9
+      ]
+    },
+    "Dubai": {
+      "state": "risk_rising",
+      "key_changes": [
+        "IIF warns Iran war could push Dubai into a 'small recession' — tourism, trade, and FDI expected to decline significantly",
+        "Gold prices remain volatile amid Middle East geopolitical uncertainty, affecting jewelry margins and consumer sentiment"
+      ],
+      "opportunities": [
+        "Potential dip in tourism may create buyer's market for luxury retail real estate and pop-up opportunities at reduced costs",
+        "Wealthy regional buyers seeking safe-haven assets may shift toward high-value jewelry with stable intrinsic value"
+      ],
+      "risks": [
+        "Tourism-dependent luxury retail faces immediate demand shock as visitor confidence takes months to recover",
+        "Geopolitical instability may deter Russian, European, and Asian HNWI travelers who are core luxury buyers",
+        "Gold/diamond price volatility complicates inventory and pricing strategy for jewelry retailers"
+      ],
+      "watch_items": [
+        "Duration and escalation trajectory of Iran conflict",
+        "Monthly Dubai tourism arrival data for luxury spending correlation",
+        "Gold spot price trends and impact on jewelry retail margins"
+      ],
+      "evidence_event_ids": [
+        12
+      ]
+    },
+    "Milan": {
+      "state": "opportunity_rising",
+      "key_changes": [
+        "LVMH Watch Week 2026 relocating to Milan — the first time this major luxury event is hosted in the city, signaling Milan's rising status as a luxury watch and jewelry hub",
+        "Chanel returned to growth in 2025 ($19.3B, +3%) led by European and American demand, indicating luxury recovery momentum in the region"
+      ],
+      "opportunities": [
+        "Milan's positioning as a luxury fashion + watch/jewelry destination creates cross-category synergy for maison-branded jewelry",
+        "US tourists may increase luxury purchases in Europe (including Milan) to circumvent tariffs, boosting local jewelry retail",
+        "LVMH Watch Week presence attracts global media and HNWI attention — ideal for brand activations and previews"
+      ],
+      "risks": [
+        "Aspirational luxury segment is still under pressure (Saint Laurent CEO acknowledges losing middle-tier customers)",
+        "General global luxury slowdown could dampen even Milan's elevated event-driven momentum"
+      ],
+      "watch_items": [
+        "LVMH Watch Week January 2026 attendance and brand participation levels",
+        "US-to-Europe tourist spending data for tariff-avoidance trend confirmation",
+        "European luxury consumer confidence indices over next 2 quarters"
+      ],
+      "evidence_event_ids": []
+    }
+  },
+  "cross_market_insight": "The three markets are sharply diverging: Singapore shows explosive consumer demand for luxury collaborations despite global headwinds, Dubai faces acute geopolitical recession risk threatening its tourism-driven jewelry economy, and Milan is ascending as a luxury events hub benefiting from European recovery and tariff-driven US tourist spending — requiring fundamentally different strategies for each."
+}
