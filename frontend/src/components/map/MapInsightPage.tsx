@@ -1,13 +1,13 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import SingaporeMap from './SingaporeMap'
 import RegionPanel from './RegionPanel'
 import Icon from '../ui/Icon'
-import { SG_REGIONS, REGION_DETAIL } from '../../api/mockData'
-import type { Filters } from '../../api/types'
+import { fetchRegionDetail, fetchSgRegions } from '../../api'
+import type { Filters, RegionDetail, SgRegion } from '../../api/types'
 
-function StoreDistribution() {
-  const rows = [...SG_REGIONS].sort((a, b) => b.stores - a.stores)
-  const max = Math.max(...rows.map(r => r.stores))
+function StoreDistribution({ regions }: { regions: SgRegion[] }) {
+  const rows = [...regions].sort((a, b) => b.stores - a.stores)
+  const max = Math.max(1, ...rows.map(r => r.stores))
   const total = rows.reduce((s, r) => s + r.stores, 0)
   return (
     <BottomCard icon="store" title="门店分布概览">
@@ -30,13 +30,16 @@ function StoreDistribution() {
   )
 }
 
-function HeatList({ onPick, selected }: { onPick: (id: string) => void; selected: string }) {
-  const items = [
-    { id: 'orchard', name: '乌节路', desc: '高端商业核心区，客流密集、品牌竞争激烈', heat: '高' },
-    { id: 'marina',  name: '滨海湾', desc: '地标商圈，旅游客流集中、消费力强', heat: '高' },
-    { id: 'bugis',   name: '武吉士', desc: '商业氛围浓厚，交通枢纽、游客集中', heat: '中' },
-    { id: 'cbd',     name: '市中心', desc: '白领客群稳定，节假日客流回升明显', heat: '中' },
-  ]
+function HeatList({ regions, onPick, selected }: { regions: SgRegion[]; onPick: (id: string) => void; selected: string }) {
+  const items = regions
+    .filter(region => region.hot === 'high' || region.priority)
+    .slice(0, 4)
+    .map(region => ({
+      id: region.id,
+      name: region.name,
+      desc: `${region.sub} · ${region.stores} 家门店`,
+      heat: region.hot === 'high' ? '高' : '中',
+    }))
   return (
     <BottomCard icon="flame" title="核心商圈热力">
       <div className="flex flex-col gap-2">
@@ -72,13 +75,8 @@ function HeatList({ onPick, selected }: { onPick: (id: string) => void; selected
   )
 }
 
-function TrafficSignals() {
-  const sigs = [
-    { icon: 'users',   label: '日均客流指数', value: '高', delta: '+12%' },
-    { icon: 'diamond', label: '高净值客群占比', value: '高', delta: '+9%' },
-    { icon: 'globe',   label: '游客占比',       value: '高', delta: '+15%' },
-    { icon: 'target',  label: '平均客单价指数', value: '高', delta: '+8%' },
-  ]
+function TrafficSignals({ detail }: { detail?: RegionDetail | null }) {
+  const sigs = detail?.metrics ?? []
   return (
     <BottomCard icon="broadcast" title="客流与消费信号">
       <div className="flex flex-col gap-2">
@@ -91,46 +89,38 @@ function TrafficSignals() {
             <span style={{ color: 'var(--gold-2)' }}><Icon name={s.icon} size={14} /></span>
             <span style={{ fontSize: 12.5, color: 'var(--ink-2)' }}>{s.label}</span>
             <span style={{ fontSize: 12.5, color: 'var(--sage-deep)', fontWeight: 600 }}>{s.value}</span>
-            <span style={{ fontSize: 11.5, color: 'var(--sage-deep)', display: 'flex', alignItems: 'center', gap: 2 }}>
-              <Icon name="trending" size={11} /> {s.delta}
-            </span>
+            <span style={{ fontSize: 11.5, color: 'var(--ink-3)' }}>{s.unit ?? ''}</span>
           </div>
         ))}
+        {sigs.length === 0 && <div style={{ fontSize: 12.5, color: 'var(--ink-3)' }}>暂无区域指标</div>}
       </div>
-      <div style={{ marginTop: 10, fontSize: 10.5, color: 'var(--ink-3)' }}>* 相较新加坡整体平均</div>
     </BottomCard>
   )
 }
 
-function OpsRisk() {
-  const risks = [
-    { kind: 'clay', label: '核心商圈租金', value: '偏高', note: '需提升坪效与转化' },
-    { kind: 'bone', label: '汇率波动',     value: '中等', note: '对进口成本影响显著' },
-    { kind: 'sage', label: '员工招聘',     value: '稳定', note: '本地导购供给充足' },
-    { kind: 'clay', label: '竞品扩张',     value: '加剧', note: 'Maison Aurelia 新增 2 店' },
-  ]
+function OpsRisk({ detail }: { detail?: RegionDetail | null }) {
+  const risks = detail?.insights ?? []
   return (
     <BottomCard icon="shield" title="区域运营风险">
       <div className="flex flex-col gap-2">
-        {risks.map((r, i) => (
+        {risks.slice(0, 4).map((r, i) => (
           <div key={i} style={{
-            display: 'grid', gridTemplateColumns: '10px 1fr auto', gap: 10, alignItems: 'center',
+            display: 'grid', gridTemplateColumns: '10px 1fr', gap: 10, alignItems: 'center',
             padding: '10px 12px',
             background: 'var(--ivory)', borderRadius: 10, border: '1px solid var(--line-soft)',
           }}>
             <span style={{
               width: 8, height: 8, borderRadius: 8,
-              background: r.kind === 'clay' ? 'var(--clay)' : r.kind === 'sage' ? 'var(--sage)' : 'var(--ink-4)',
-              boxShadow: `0 0 0 3px ${r.kind === 'clay' ? 'var(--clay-tint)' : r.kind === 'sage' ? 'var(--sage-tint)' : 'var(--gold-wash)'}`,
+              background: 'var(--ink-4)',
+              boxShadow: '0 0 0 3px var(--gold-wash)',
               marginLeft: 4,
             }} />
             <div>
-              <div style={{ fontSize: 12.5, color: 'var(--ink-1)', fontWeight: 600 }}>{r.label}</div>
-              <div style={{ fontSize: 11, color: 'var(--ink-3)', marginTop: 1 }}>{r.note}</div>
+              <div style={{ fontSize: 12.5, color: 'var(--ink-1)', fontWeight: 600 }}>{r}</div>
             </div>
-            <span className={`chip ${r.kind}`}>{r.value}</span>
           </div>
         ))}
+        {risks.length === 0 && <div style={{ fontSize: 12.5, color: 'var(--ink-3)' }}>暂无风险洞察</div>}
       </div>
     </BottomCard>
   )
@@ -158,8 +148,26 @@ function SimTag({ label, value }: { label: string; value: string }) {
 }
 
 export default function MapInsightPage({ filters }: { filters: Filters }) {
-  const [selected, setSelected] = useState('orchard')
-  const regionName = REGION_DETAIL[selected]?.name ?? ''
+  const [regions, setRegions] = useState<SgRegion[]>([])
+  const [selected, setSelected] = useState('')
+  const [detail, setDetail] = useState<RegionDetail | null>(null)
+  const market = filters.region === '全球' || filters.region === '亚太' ? 'Singapore' : filters.region
+  const regionName = detail?.name ?? regions.find(region => region.id === selected)?.name ?? ''
+
+  useEffect(() => {
+    fetchSgRegions(market).then(items => {
+      setRegions(items)
+      setSelected(current => current || items[0]?.id || '')
+    }).catch(console.error)
+  }, [market])
+
+  useEffect(() => {
+    if (!selected) return
+    fetchRegionDetail(selected).then(next => setDetail(next ?? null)).catch(error => {
+      console.error(error)
+      setDetail(null)
+    })
+  }, [selected])
 
   return (
     <div style={{
@@ -181,10 +189,10 @@ export default function MapInsightPage({ filters }: { filters: Filters }) {
         }}>
           <span style={{ fontWeight: 700, color: '#4A597D', letterSpacing: '.02em' }}>区域战略模拟</span>
           <span style={{ color: 'var(--ink-4)' }}>|</span>
-          <SimTag label="模拟目标" value="提升高端客群触达" />
+          <SimTag label="区域类型" value={detail?.profile.type ?? '—'} />
           <SimTag label="模拟区域" value={regionName || '乌节路'} />
-          <SimTag label="模拟周期" value="未来 30 天" />
-          <SimTag label="数据来源" value="公开信息 + 行业报告 + 社媒趋势" />
+          <SimTag label="适合动作" value={detail?.profile.action ?? '—'} />
+          <SimTag label="数据来源" value="后端 districts + market snapshots" />
         </div>
 
         <div className="flex justify-between items-center flex-wrap" style={{ marginBottom: 14, gap: 12 }}>
@@ -207,7 +215,7 @@ export default function MapInsightPage({ filters }: { filters: Filters }) {
           </div>
         </div>
         <div style={{ position: 'relative', borderRadius: 12, overflow: 'hidden', border: '1px solid var(--line-soft)' }}>
-          <SingaporeMap selected={selected} onSelect={setSelected} />
+          <SingaporeMap selected={selected} regions={regions} onSelect={setSelected} />
           <div style={{
             position: 'absolute', right: 16, top: 16,
             width: 44, height: 44, borderRadius: 22,
@@ -222,15 +230,15 @@ export default function MapInsightPage({ filters }: { filters: Filters }) {
 
       {/* Right panel */}
       <div style={{ gridColumn: '2 / 3', gridRow: '1 / 3' }}>
-        <RegionPanel id={selected} />
+        <RegionPanel detail={detail} />
       </div>
 
       {/* Bottom modules */}
       <div style={{ gridColumn: '1 / 2', gridRow: '2 / 3', display: 'grid', gridTemplateColumns: '1fr 1.1fr 1fr 1fr', gap: 14 }}>
-        <StoreDistribution />
-        <HeatList onPick={setSelected} selected={selected} />
-        <TrafficSignals />
-        <OpsRisk />
+        <StoreDistribution regions={regions} />
+        <HeatList regions={regions} onPick={setSelected} selected={selected} />
+        <TrafficSignals detail={detail} />
+        <OpsRisk detail={detail} />
       </div>
     </div>
   )

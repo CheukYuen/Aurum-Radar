@@ -1,6 +1,5 @@
 import Icon from '../ui/Icon'
-import { COUNTRY_DETAIL } from '../../api/mockData'
-import type { PageId } from '../../api/types'
+import type { CountryDetail, PageId } from '../../api/types'
 
 function ScoreRing({ value }: { value: number }) {
   const r = 52, c = 2 * Math.PI * r, pct = value / 100
@@ -36,12 +35,20 @@ function Row({ label, value }: { label: string; value: React.ReactNode }) {
 }
 
 interface CountryPanelProps {
-  id: string
+  detail?: CountryDetail | null
   onJumpToMap: (id: PageId) => void
 }
 
-export default function CountryPanel({ id, onJumpToMap }: CountryPanelProps) {
-  const d = COUNTRY_DETAIL[id] ?? COUNTRY_DETAIL['sg']!
+export default function CountryPanel({ detail, onJumpToMap }: CountryPanelProps) {
+  if (!detail) {
+    return (
+      <div className="card flex flex-col" style={{ padding: 22, height: '100%', justifyContent: 'center', color: 'var(--ink-3)' }}>
+        暂无市场判断数据
+      </div>
+    )
+  }
+
+  const d = detail
   return (
     <div className="card flex flex-col" style={{ padding: 22, height: '100%', overflowY: 'auto' }}>
       {/* Agent judgment header */}

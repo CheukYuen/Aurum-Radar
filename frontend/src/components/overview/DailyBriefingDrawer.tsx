@@ -1,6 +1,8 @@
+import { useEffect, useState } from 'react'
 import Icon from '../ui/Icon'
+import { fetchLatestBrief } from '../../api'
 
-import type { PageId } from '../../api/types'
+import type { DailyBrief, PageId } from '../../api/types'
 
 interface DailyBriefingDrawerProps {
   open: boolean
@@ -51,7 +53,7 @@ function MarketCard({ name, sub, status, desc, delay }: { name: string; sub: str
         <div style={{ fontSize: 10, letterSpacing: '.14em', color: 'var(--ink-4)', textTransform: 'uppercase', marginTop: 2 }}>{sub}</div>
       </div>
       <span className={`chip ${STATUS_CHIP[status] ?? 'bone'}`} style={{ padding: '4px 12px', fontSize: 12, fontWeight: 700, flexShrink: 0 }}>{status}</span>
-      <span style={{ fontSize: 13.5, color: 'var(--ink-2)', lineHeight: 1.5, flex: 1 }}>{desc}</span>
+      <span style={{ fontSize: 13.5, color: 'var(--ink-2)', lineHeight: 1.5, flex: 1 }}>{desc || '暂无摘要'}</span>
     </div>
   )
 }
@@ -108,6 +110,16 @@ function ImpactCard({ kind, text, delay }: { kind: 'opportunity' | 'risk' | 'wat
 
 // ── Drawer ───────────────────────────────────────────────────────
 export default function DailyBriefingDrawer({ open, onClose, onNav, onNavToActions }: DailyBriefingDrawerProps) {
+  const [brief, setBrief] = useState<DailyBrief | null>(null)
+
+  useEffect(() => {
+    if (!open) return
+    fetchLatestBrief().then(setBrief).catch(error => {
+      console.error(error)
+      setBrief(null)
+    })
+  }, [open])
+
   if (!open) return null
 
   return (
@@ -165,7 +177,7 @@ export default function DailyBriefingDrawer({ open, onClose, onNav, onNavToActio
             display: 'flex', alignItems: 'center', gap: 8,
             marginTop: 10, fontSize: 13, color: 'var(--ink-3)',
           }}>
-            <span style={{ fontFamily: 'var(--font-mono)' }}>2026/05/21 09:30</span>
+            <span style={{ fontFamily: 'var(--font-mono)' }}>{brief?.asOf ? new Date(brief.asOf).toLocaleString('zh-CN', { hour12: false }) : brief?.briefDate ?? '—'}</span>
             <span style={{ color: 'var(--ink-5)' }}>·</span>
             <span style={{ fontWeight: 600, letterSpacing: '.06em', color: 'var(--ink-4)', textTransform: 'uppercase', fontSize: 11.5 }}>Agent 自动生成</span>
             <span style={{
@@ -183,10 +195,10 @@ export default function DailyBriefingDrawer({ open, onClose, onNav, onNavToActio
           <div>
             <SectionHeader title="今日重点市场" sub="Key Markets" />
             <div className="flex flex-col gap-3">
-              <MarketCard name="新加坡" sub="Singapore"    status="机会增强" desc="高端商圈消费回暖，旅游零售向好"           delay={60}  />
-              <MarketCard name="中东"   sub="Middle East"  status="风险升温" desc="地缘与汇率波动，节日营销窗口收窄"         delay={100} />
-              <MarketCard name="欧洲"   sub="Europe"       status="法规变化" desc="贵金属供应链尽调指令进入合规倒计时"       delay={140} />
-              <MarketCard name="北美"   sub="N. America"   status="竞争加剧" desc="亚马逊珠宝品类流量扶持，DTC 品牌活跃"   delay={180} />
+              {(brief?.markets.length ? brief.markets : []).map((market, i) => (
+                <MarketCard key={market.id} name={market.name} sub={market.sub} status={market.status} desc={market.desc} delay={60 + i * 40} />
+              ))}
+              {!brief?.markets.length && <div style={{ fontSize: 13, color: 'var(--ink-3)' }}>暂无市场简报数据</div>}
             </div>
           </div>
 
@@ -194,11 +206,10 @@ export default function DailyBriefingDrawer({ open, onClose, onNav, onNavToActio
           <div>
             <SectionHeader title="关键变化" sub="Signal Changes" />
             <div className="flex flex-col gap-2">
-              <SignalRow cat="竞争" text="Maison Aurelia 收购 Damasco，强化高端珠宝版图"      delay={220} />
-              <SignalRow cat="产品" text="培育钻价格继续下行，高端天然钻需求分化"              delay={250} />
-              <SignalRow cat="平台" text="亚马逊推出珠宝新品类流量扶持计划（90 天）"          delay={280} />
-              <SignalRow cat="社媒" text="TikTok #OldMoneyJewelry 话题环比 +38%"             delay={310} />
-              <SignalRow cat="法规" text="欧盟强化贵金属供应链尽职调查要求"                  delay={340} />
+              {(brief?.signalChanges ?? []).map((item, i) => (
+                <SignalRow key={`${item.cat}-${item.text}`} cat={item.cat} text={item.text} delay={220 + i * 30} />
+              ))}
+              {!brief?.signalChanges.length && <div style={{ fontSize: 13, color: 'var(--ink-3)' }}>暂无关键变化</div>}
             </div>
           </div>
 
@@ -206,9 +217,10 @@ export default function DailyBriefingDrawer({ open, onClose, onNav, onNavToActio
           <div>
             <SectionHeader title="业务影响判断" sub="Business Impact" />
             <div style={{ display: 'flex', gap: 12 }}>
-              <ImpactCard kind="opportunity" text="新加坡高端商圈适合加大品牌曝光与会员邀约" delay={380} />
-              <ImpactCard kind="risk"        text="欧洲合规成本可能提升，中小供应链集中度受影响" delay={410} />
-              <ImpactCard kind="watch"       text="中东市场节日营销窗口与竞品投放节奏" delay={440} />
+              {(brief?.impacts ?? []).slice(0, 3).map((impact, i) => (
+                <ImpactCard key={`${impact.kind}-${impact.text}`} kind={impact.kind} text={impact.text} delay={380 + i * 30} />
+              ))}
+              {!brief?.impacts.length && <div style={{ fontSize: 13, color: 'var(--ink-3)' }}>暂无业务影响判断</div>}
             </div>
           </div>
 
@@ -216,17 +228,13 @@ export default function DailyBriefingDrawer({ open, onClose, onNav, onNavToActio
           <div>
             <SectionHeader title="建议后续行动" sub="Suggested Actions" />
             <div className="flex flex-col gap-3">
-              {[
-                { dept: '市场部', deptId: 'mkt', text: '优先推进乌节路 / 滨海湾商圈投放，配套节日营销活动', delay: 460 },
-                { dept: '产品部', deptId: 'pdt', text: '关注轻奢与高端礼赠系列组合，启动 SKU 评估', delay: 490 },
-                { dept: '法务合规', deptId: 'law', text: '跟踪欧盟供应链尽调新规，启动合规倒排', delay: 520 },
-              ].map((a, i) => (
+              {(brief?.actions ?? []).map((a, i) => (
                 <div key={i} style={{
                   display: 'flex', alignItems: 'center', gap: 14,
                   padding: '14px 18px',
                   background: 'var(--pearl)', border: '1px solid var(--line-soft)', borderRadius: 12,
                   animation: `item-fade-up 0.4s ease both`,
-                  animationDelay: `${a.delay}ms`,
+                  animationDelay: `${460 + i * 30}ms`,
                 }}>
                   <span style={{
                     padding: '5px 12px', borderRadius: 20, flexShrink: 0,
@@ -244,6 +252,7 @@ export default function DailyBriefingDrawer({ open, onClose, onNav, onNavToActio
                   </button>
                 </div>
               ))}
+              {!brief?.actions.length && <div style={{ fontSize: 13, color: 'var(--ink-3)' }}>暂无行动建议</div>}
             </div>
           </div>
 
@@ -257,7 +266,7 @@ export default function DailyBriefingDrawer({ open, onClose, onNav, onNavToActio
             animationDelay: '560ms',
           }}>
             <Icon name="clipboard" size={14} style={{ color: 'var(--ink-4)', marginTop: 2, flexShrink: 0 }} />
-            <span>本简报由 Market Radar Agent 基于今日扫描的公开信息（行业报告、政府官网、新闻、社媒、电商平台公告）自动整合，每条判断均可追溯至「情报中心」原始来源。</span>
+            <span>本简报由 Market Radar Agent 基于库内最新公开信息自动整合；当前简报覆盖 {brief?.sourceCount ?? 0} 条来源、{brief?.eventCount ?? 0} 条情报事件。</span>
           </div>
 
         </div>
@@ -280,7 +289,7 @@ export default function DailyBriefingDrawer({ open, onClose, onNav, onNavToActio
             <Icon name="source" size={15} />
             查看情报来源
           </button>
-          <button onClick={() => onNavToActions('mkt')} style={{
+          <button onClick={() => onNavToActions(brief?.actions[0]?.deptId ?? '')} style={{
             display: 'flex', alignItems: 'center', gap: 8,
             padding: '10px 20px',
             background: 'linear-gradient(135deg, var(--gold-3), var(--gold-1))',

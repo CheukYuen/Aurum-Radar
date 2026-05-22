@@ -19,6 +19,7 @@ export interface CountryNode {
   y: number
   status: StatusKind
   size: number
+  headline?: string
 }
 
 export interface CountryBullet {
@@ -45,6 +46,7 @@ export interface CountryDetail {
   bullets: CountryBullet[]
   triggers?: string[]
   impacts?: CountryImpact[]
+  asOf?: string
 }
 
 // ── Map insight types ───────────────────────────────────────────
@@ -144,8 +146,43 @@ export interface Department {
   priority: DeptPriority
   cycle: string
   owner: string
+  market?: string
+  actionCount?: number
   summary: DeptSummaryItem[]
   goal: string
   steps: DeptStep[]
   refs: DeptRef[]
+}
+
+export interface DailyBriefMarket {
+  id: string
+  name: string
+  sub: string
+  status: string
+  desc: string
+}
+
+export interface BriefAction {
+  dept: string
+  deptId: string
+  text: string
+}
+
+export interface DailyBrief {
+  briefDate: string
+  asOf?: string
+  executiveSummary: string
+  markets: DailyBriefMarket[]
+  signalChanges: { cat: string; text: string }[]
+  impacts: CountryImpact[]
+  actions: BriefAction[]
+  sourceCount: number
+  eventCount: number
+}
+
+export interface JobsStatus {
+  status: string
+  lastRun?: string | null
+  nextRun?: string | null
+  stages: { stage: string; status: string; finishedAt?: string | null; rowsAffected?: number | null }[]
 }

@@ -39,7 +39,7 @@ export default function ActionDetail({ d }: { d: Department }) {
         <div>
           <h3 style={{ margin: 0, fontFamily: 'var(--font-serif)', fontSize: 22, fontWeight: 600 }}>{d.name}行动清单</h3>
           <div style={{ fontSize: 12, color: 'var(--ink-3)', marginTop: 2 }}>
-            基于新加坡市场洞察生成 · {d.sub} Action Plan
+            基于{d.market || '当前市场'}洞察生成 · {d.sub} Action Plan
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 5 }}>
             <span style={{ width: 6, height: 6, borderRadius: 3, background: 'var(--sage)', display: 'inline-block', boxShadow: '0 0 0 2px var(--sage-tint)' }} />
@@ -128,29 +128,6 @@ export default function ActionDetail({ d }: { d: Department }) {
             <span>{r.text}</span>
           </div>
         ))}
-      </div>
-
-      {/* Strategic judgment module */}
-      <div style={{
-        marginBottom: 16, padding: '12px 14px',
-        background: 'linear-gradient(135deg, var(--gold-wash), var(--pearl-warm))',
-        border: '1px solid var(--line)', borderRadius: 10,
-      }}>
-        <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--gold-2)', letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: 8 }}>
-          关联战略判断
-        </div>
-        <div className="flex flex-col gap-1.5">
-          {[
-            '新加坡高端商圈机会增强',
-            '乌节路与滨海湾具备优先投放价值',
-            '核心风险为租金成本与竞品密度',
-          ].map((item, i) => (
-            <div key={i} className="flex items-start gap-2" style={{ fontSize: 12.5, color: 'var(--ink-2)' }}>
-              <span style={{ color: 'var(--gold-2)', marginTop: 1, flexShrink: 0 }}><Icon name="diamond" size={11} /></span>
-              <span>{item}</span>
-            </div>
-          ))}
-        </div>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginTop: 'auto' }}>

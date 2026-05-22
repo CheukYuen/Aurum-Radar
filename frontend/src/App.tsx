@@ -16,7 +16,7 @@ export default function App() {
     category: '全部品类',
   })
   const [briefingOpen, setBriefingOpen] = useState(false)
-  const [activeDept, setActiveDept] = useState('mkt')
+  const [activeDept, setActiveDept] = useState('')
 
   const handleNav = (id: PageId) => {
     setPage(id)

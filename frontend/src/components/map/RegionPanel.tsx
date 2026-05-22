@@ -1,6 +1,5 @@
 import Icon from '../ui/Icon'
-import { REGION_DETAIL } from '../../api/mockData'
-import type { RegionMetric } from '../../api/types'
+import type { RegionDetail, RegionMetric } from '../../api/types'
 
 function MetricCell({ m }: { m: RegionMetric }) {
   return (
@@ -54,8 +53,16 @@ function ProfileRow({ label, value }: { label: string; value: string }) {
   )
 }
 
-export default function RegionPanel({ id }: { id: string }) {
-  const d = REGION_DETAIL[id] ?? REGION_DETAIL['orchard']!
+export default function RegionPanel({ detail }: { detail?: RegionDetail | null }) {
+  if (!detail) {
+    return (
+      <div className="card flex flex-col" style={{ padding: 24, height: '100%', justifyContent: 'center', color: 'var(--ink-3)' }}>
+        暂无商圈详情数据
+      </div>
+    )
+  }
+
+  const d = detail
   return (
     <div className="card flex flex-col" style={{ padding: 24, height: '100%' }}>
       <div className="flex justify-between items-start">

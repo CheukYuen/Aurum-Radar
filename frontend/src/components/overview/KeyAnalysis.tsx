@@ -1,4 +1,5 @@
 import Icon from '../ui/Icon'
+import type { DashboardSummary } from '../../api'
 import type { PageId } from '../../api/types'
 
 function Sparkline({ data, color = 'var(--gold-2)' }: { data: number[]; color?: string }) {
@@ -27,13 +28,18 @@ function Sparkline({ data, color = 'var(--gold-2)' }: { data: number[]; color?: 
   )
 }
 
-const ITEMS = [
-  { icon: 'diamond', title: '市场机会', num: 28, sub: '新兴需求与增长领域识别', trend: [4,5,6,5,7,8,9,8,11,12,14,15], color: 'var(--gold-2)' },
-  { icon: 'users',   title: '竞争动态', num: 16, sub: '主要竞争对手与市场动向', trend: [8,7,9,11,10,12,10,13,11,14,13,16], color: '#6B7A9E' },
-  { icon: 'shield',  title: '法规关注', num: 9,  sub: '政策法规与合规风险提示', trend: [3,4,3,5,4,6,5,7,6,8,7,9], color: 'var(--clay)' },
-]
+function sparkData(value: number): number[] {
+  return [0, value]
+}
 
-export default function KeyAnalysis({ onCard }: { onCard: (id: PageId) => void }) {
+export default function KeyAnalysis({ summary, onCard }: { summary: DashboardSummary | null; onCard: (id: PageId) => void }) {
+  const counts = summary?.key_analysis
+  const items = [
+    { icon: 'diamond', title: '市场机会', num: counts?.opportunities ?? 0, sub: '机会型情报与增长信号', color: 'var(--gold-2)' },
+    { icon: 'users',   title: '竞争动态', num: counts?.competition ?? 0, sub: '主要竞争对手与市场动向', color: '#6B7A9E' },
+    { icon: 'shield',  title: '法规关注', num: counts?.regulation ?? 0, sub: '政策法规与合规风险提示', color: 'var(--clay)' },
+  ]
+
   return (
     <div className="card" style={{ padding: 22 }}>
       <div className="flex justify-between items-center" style={{ marginBottom: 16 }}>
@@ -43,7 +49,7 @@ export default function KeyAnalysis({ onCard }: { onCard: (id: PageId) => void }
         </span>
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14 }}>
-        {ITEMS.map((it, i) => (
+        {items.map((it, i) => (
           <button key={i} onClick={() => onCard('intel')}
             className="card-hover"
             style={{
@@ -62,7 +68,7 @@ export default function KeyAnalysis({ onCard }: { onCard: (id: PageId) => void }
               <div className="num-display" style={{ fontSize: 38, lineHeight: 1, color: 'var(--ink-1)' }}>
                 {it.num}<span style={{ fontSize: 13, color: 'var(--ink-3)', marginLeft: 4, fontWeight: 400 }}>条</span>
               </div>
-              <Sparkline data={it.trend} color={it.color} />
+              <Sparkline data={sparkData(it.num)} color={it.color} />
             </div>
             <div style={{ fontSize: 12, color: 'var(--ink-3)' }}>{it.sub}</div>
           </button>
