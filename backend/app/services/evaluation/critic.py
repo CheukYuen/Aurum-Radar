@@ -41,30 +41,26 @@ def critique_event(event: dict, source_excerpt: str) -> dict:
         return {"verdict": "unknown", "credibility_ok": None, "issue": str(exc)[:80]}
 
 
-def critique_strategy(strategy_result: dict) -> dict:
-    """Holistic logic review of the strategy sandbox — complex task (qwen-max)."""
+def critique_council(council_report: dict) -> dict:
+    """Holistic logic review of the council decision report — complex task (qwen-max)."""
     payload = {
-        "situation_summary": strategy_result.get("situation_summary"),
-        "strategic_variables": strategy_result.get("strategic_variables"),
-        "matched_strategies": [
-            {"strategy_name": m.get("strategy_name"), "match_score": m.get("match_score")}
-            for m in strategy_result.get("matched_strategies", [])
-        ],
-        "ranked_plans": [
-            {"plan_name": p.get("plan_name"), "rank": p.get("rank"),
-             "weighted_score": p.get("weighted_score")}
-            for p in strategy_result.get("ranked_plans", [])
-        ],
-        "three_strategies": strategy_result.get("three_strategies"),
+        "council_summary": council_report.get("council_summary"),
+        "key_signals": council_report.get("key_signals"),
+        "opportunities": council_report.get("opportunities"),
+        "risks": council_report.get("risks"),
+        "strategic_options": council_report.get("strategic_options"),
+        "expert_disagreements": council_report.get("expert_disagreements"),
+        "confidence": council_report.get("confidence"),
     }
-    user = f"""战略沙盘推演结果：
+    user = f"""智囊团决策报告：
 {json.dumps(payload, ensure_ascii=False, indent=2)}
 
-审查推演的逻辑链是否自洽：
-1. 战略变量是否由情报支撑，有无与情报矛盾的变量判断？
-2. 匹配到的策略是否真的契合变量？
-3. 上中下三策是否与排序结果一致？三策之间有无矛盾？
-4. 行动路径是否具体、可验证，还是泛泛而谈？
+审查决策报告的逻辑链是否自洽：
+1. council_summary 是否给出明确判断方向，还是泛泛而谈？
+2. opportunities / risks 是否都绑定了证据（evidence_ids）？有无与情报矛盾的结论？
+3. 上中下三策是否层次清晰、与 council_summary 的推荐一致？三策之间有无矛盾？
+4. department_actions 行动是否具体可执行，还是空话？
+5. confidence 是否与证据强度匹配（证据稀薄却给 high 即为问题）？
 输出 JSON：
 {{"logic_verdict": "sound|minor_issues|flawed",
   "issues": ["..."],
@@ -75,5 +71,5 @@ def critique_strategy(strategy_result: dict) -> dict:
             model=settings.DASHSCOPE_MODEL_REASONING, temperature=0.3,
         )
     except Exception as exc:  # noqa: BLE001
-        logger.warning(f"strategy critique failed: {exc}")
+        logger.warning(f"council critique failed: {exc}")
         return {"logic_verdict": "unknown", "issues": [str(exc)[:80]], "strengths": []}

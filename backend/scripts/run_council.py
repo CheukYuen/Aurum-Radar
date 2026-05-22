@@ -1,23 +1,23 @@
-"""Run the full Agent flow + strategy sandbox on the data_probe 2026-05-22
-full-text snapshot, persist to the DB, and print what was inferred.
+"""Run the full Agent flow + strategic intelligence council on the data_probe
+2026-05-22 full-text snapshot, persist to the DB, and print what was inferred.
 
-Usage (from backend/):  python -m scripts.run_strategy
+Usage (from backend/):  python -m scripts.run_council
 
 Flow: ingest(seed) → clean → extract → score → forecast → brief  (main
-pipeline, stages 1-6, persisted) → strategy sandbox for Singapore
-(§17, 6 steps) → action_items persisted. Strategy intermediate results are
-printed but NOT persisted (architecture.md §17.7).
+pipeline, stages 1-6, persisted) → council for Singapore (§17: 5 experts →
+chief strategy officer) → council_reports + action_items persisted.
 """
 from __future__ import annotations
 
 import json
 from datetime import datetime, timezone
 
+from app.database import repository
 from app.database.session import SessionLocal
 from app.schemas import RawDocumentIn, SourceType
+from app.services.council import derive_actions, run_council
 from app.services.evaluation import run_evaluation
 from app.services.pipeline import run_pipeline
-from app.services.strategy import run_sandbox
 
 _NOW = datetime.now(timezone.utc)
 
@@ -129,41 +129,52 @@ SEED = [
 ]
 
 
-def _print_strategy(r: dict) -> None:
+def _print_council(r: dict) -> None:
     print("\n" + "=" * 72)
-    print(f"战略沙盘推演结果 —— {r['market']}（基于 {r['event_count']} 条情报）")
+    print(f"智囊团决策报告 —— {r.get('market', '')}（{r.get('time_window', '')}）")
     print("=" * 72)
-    print(f"\n【局势判断】\n{r.get('situation_summary', '')}")
+    print(f"\n【总体结论】\n{r.get('council_summary', '')}")
 
-    print("\n【战略变量】")
-    for name, v in r.get("strategic_variables", {}).items():
-        print(f"  {name:24} {str(v.get('value','?')):8} (conf {v.get('confidence','?')})")
+    conf = r.get("confidence", {}) or {}
+    print(f"\n【整体置信度】{conf.get('level', '?')}  score={conf.get('score', '?')}")
+    if conf.get("rationale"):
+        print(f"  {conf.get('rationale', '')}")
 
-    print("\n【Top 匹配策略】")
-    for m in r.get("matched_strategies", []):
-        print(f"  [{m['match_score']:+d}] {m['strategy_name']}（{m['classical_source']}）"
-              f" — {m.get('why_applicable', m['business_meaning'])[:70]}")
+    print("\n【关键信号】")
+    for s in r.get("key_signals", []):
+        print(f"  · {s.get('signal', '')}  证据 {s.get('evidence_ids', [])}")
 
-    print("\n【候选方案排序】")
-    for p in r.get("ranked_plans", []):
-        print(f"  #{p['rank']} {p['plan_name']}  综合分 {p['weighted_score']}")
+    print("\n【机会】")
+    for o in r.get("opportunities", []):
+        print(f"  + {o.get('title', '')}（{o.get('category', '')}，conf {o.get('confidence', '?')}）")
+    print("\n【风险】")
+    for x in r.get("risks", []):
+        print(f"  - [{x.get('severity', '?')}] {x.get('title', '')}")
+    print("\n【需关注】")
+    for w in r.get("watch_items", []):
+        print(f"  ? {w.get('item', '')}")
 
-    three = r.get("three_strategies", {})
-    for key, label in [("best_strategy", "上策"), ("middle_strategy", "中策"), ("low_strategy", "下策")]:
-        s = three.get(key, {})
+    opts = r.get("strategic_options", {}) or {}
+    for key, label in [("upper_strategy", "上策"), ("middle_strategy", "中策"), ("lower_strategy", "下策")]:
+        s = opts.get(key, {})
         if not s:
             continue
-        print(f"\n【{label}】{s.get('plan_name','')}")
-        print(f"  核心逻辑：{s.get('core_logic','')}")
-        print(f"  匹配计策：{'、'.join(s.get('matched_strategies', []))}")
-        print(f"  为何此策：{s.get('why_this_tier','')}")
-        paths = s.get("action_paths", [])
-        if paths:
-            print("  行动路径：")
-            for a in paths:
-                print(f"    [{a.get('phase','')}|{a.get('department','')}] {a.get('action','')}")
-    print(f"\n【谋士结论】\n{three.get('agent_conclusion','')}")
-    print(f"\n落库行动项：{r.get('derived_action_count', 0)} 条")
+        print(f"\n【{label}】{s.get('name', '')}")
+        print(f"  兵法依据：{s.get('classical_basis', '')}")
+        print(f"  打法：{s.get('description', '')}")
+
+    print("\n【部门行动】")
+    for team, items in (r.get("department_actions", {}) or {}).items():
+        for a in items or []:
+            print(f"  [{team}|{a.get('priority', '')}] {a.get('action', '')}")
+
+    disagreements = r.get("expert_disagreements", [])
+    if disagreements:
+        print("\n【专家分歧】")
+        for d in disagreements:
+            print(f"  · {d.get('topic', '')} → {d.get('council_resolution', '')}")
+
+    print(f"\n落库行动项：{r.get('_derived_action_count', 0)} 条")
     print("=" * 72)
 
 
@@ -177,8 +188,8 @@ def _print_evaluation(r: dict) -> None:
     print(f"  来源可信度分布 {rule.get('credibility_distribution')}")
     print(f"  证据落地通过率 {r.get('grounding_pass_rate')}   "
           f"可信度匹配率 {r.get('credibility_match_rate')}")
-    sl = r.get("strategy_logic") or {}
-    print(f"  战略逻辑审查：{sl.get('logic_verdict', '-')}")
+    sl = r.get("council_logic") or {}
+    print(f"  决策逻辑审查：{sl.get('logic_verdict', '-')}")
     for issue in sl.get("issues", []):
         print(f"    - 问题：{issue}")
     hr = r.get("human_review_list", [])
@@ -201,22 +212,25 @@ def main() -> None:
         print(f"  {s.stage.value:9} {s.status.value:8} rows={s.rows_affected}"
               + (f"  ERROR: {s.error_message}" if s.error_message else ""))
 
-    print("\n== 战略沙盘推演（§17，Singapore）==")
+    print("\n== 战略情报智囊团（§17，Singapore）==")
     db = SessionLocal()
     try:
-        strategy = run_sandbox(db, "Singapore")
-        _print_strategy(strategy)
-        print("\n== 评估 Agent：QA 复核（§17）==")
-        report = run_evaluation(db, "Singapore", strategy_result=strategy)
+        report = run_council(db, "Singapore")
+        repository.save_council_report(db, "Singapore", report)
+        actions = derive_actions("Singapore", report)
+        report["_derived_action_count"] = repository.save_actions(db, actions)
+        _print_council(report)
+        print("\n== 评估 Agent：QA 复核 ==")
+        evaluation = run_evaluation(db, "Singapore", council_report=report)
     finally:
         db.close()
-    _print_evaluation(report)
+    _print_evaluation(evaluation)
 
-    # dump the full reasoning chain + evaluation for inspection
-    with open("strategy_singapore_output.json", "w", encoding="utf-8") as f:
-        json.dump({"strategy": strategy, "evaluation": report},
+    # dump the full decision report + evaluation for inspection
+    with open("council_singapore_output.json", "w", encoding="utf-8") as f:
+        json.dump({"council": report, "evaluation": evaluation},
                   f, ensure_ascii=False, indent=2)
-    print("完整推理链 + 评估报告已写入 backend/strategy_singapore_output.json")
+    print("完整决策报告 + 评估报告已写入 backend/council_singapore_output.json")
 
 
 if __name__ == "__main__":

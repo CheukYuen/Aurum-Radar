@@ -168,35 +168,6 @@ class DashScopeLLM:
 }}"""
         return self._chat_json(settings.DASHSCOPE_MODEL_SUMMARY, system, user, 0.4)
 
-    # ---- stage 7: department actions --------------------------------------
-    def generate_actions(self, *, events: list[dict]) -> dict:
-        """Turn high-priority events into department action items. PRD §9.7."""
-        # TODO: tune prompt; keep departments aligned with taxonomy.DEPARTMENTS.
-        system = (
-            "你是周大福海外市场战略情报分析师。把高优先级事件拆解为"
-            "部门可执行的行动任务，严格输出 JSON。"
-        )
-        user = f"""高优先级事件（JSON）：
-{json.dumps(events, ensure_ascii=False, indent=2)}
-
-请输出 JSON：
-{{
-  "actions": [
-    {{
-      "market": "市场",
-      "department": "负责部门",
-      "priority": "P0|P1|P2",
-      "action_title": "任务标题",
-      "action_detail": "任务详情",
-      "reason": "触发原因",
-      "deadline": "建议时限，如 '3 个工作日内'",
-      "expected_output": "预期产出",
-      "success_metric": "成功指标"
-    }}
-  ]
-}}"""
-        return self._chat_json(settings.DASHSCOPE_MODEL_ACTION, system, user, 0.4)
-
 
 _llm: DashScopeLLM | None = None
 

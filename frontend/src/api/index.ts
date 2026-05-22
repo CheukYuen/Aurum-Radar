@@ -4,6 +4,7 @@ import type {
   CountryDetail,
   CountryImpact,
   CountryNode,
+  CouncilStrategy,
   DailyBrief,
   Department,
   DeptPriority,
@@ -14,18 +15,22 @@ import type {
   RegionMetric,
   SgRegion,
   StatusKind,
+  StrategyOption,
+  StrategyTier,
 } from './types'
 
 export type {
   BriefAction,
   CountryDetail,
   CountryNode,
+  CouncilStrategy,
   DailyBrief,
   Department,
   IntelEvent,
   JobsStatus,
   RegionDetail,
   SgRegion,
+  StrategyOption,
 } from './types'
 
 const BASE = '/api'
@@ -408,6 +413,8 @@ export async function fetchDepartments(): Promise<Department[]> {
       goal: str(item.reason, '推进 Agent 识别出的市场行动'),
       how: str(item.action_detail, str(item.action_title)),
       when: str(item.deadline, '待定'),
+      expectedOutput: str(item.expected_output),
+      successMetric: str(item.success_metric),
     }))
     return {
       id: meta.id,
@@ -431,6 +438,44 @@ export async function fetchDepartments(): Promise<Department[]> {
       })),
     }
   })
+}
+
+export async function fetchCouncilStrategy(): Promise<CouncilStrategy | null> {
+  let raw: JsonRecord
+  try {
+    raw = await get<JsonRecord>('/council/latest')
+  } catch {
+    return null // 404 — no council report persisted yet
+  }
+  const so = (raw.strategic_options && typeof raw.strategic_options === 'object'
+    ? raw.strategic_options
+    : {}) as JsonRecord
+  const tiers: { key: string; tier: StrategyTier }[] = [
+    { key: 'upper_strategy', tier: 'upper' },
+    { key: 'middle_strategy', tier: 'middle' },
+    { key: 'lower_strategy', tier: 'lower' },
+  ]
+  const options: StrategyOption[] = []
+  for (const { key, tier } of tiers) {
+    const s = so[key]
+    if (!s || typeof s !== 'object' || Array.isArray(s)) continue
+    const o = s as JsonRecord
+    options.push({
+      tier,
+      name: str(o.name),
+      classicalBasis: str(o.classical_basis),
+      description: str(o.description),
+      preconditions: strings(o.preconditions),
+      cost: str(o.cost),
+      expectedOutcome: str(o.expected_outcome),
+    })
+  }
+  return {
+    market: str(raw.market),
+    summary: str(raw.council_summary),
+    timeWindow: str(raw.time_window),
+    options,
+  }
 }
 
 function briefImpact(kind: CountryImpact['kind'], text: string): CountryImpact {

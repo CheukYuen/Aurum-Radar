@@ -7,7 +7,14 @@ from sqlalchemy import distinct, func
 from sqlalchemy.orm import Session
 
 from app.database.session import get_db
-from app.models import ActionItem, District, IntelligenceEvent, MarketSnapshot, RawDocument
+from app.models import (
+    ActionItem,
+    CouncilReport,
+    District,
+    IntelligenceEvent,
+    MarketSnapshot,
+    RawDocument,
+)
 from app.services.taxonomy import MVP_MARKETS, region_for
 
 router = APIRouter()
@@ -193,6 +200,33 @@ def get_market(market: str, db: Session = Depends(get_db)):
         "event_count": snapshot.event_count or 0,
         "created_at": _iso(snapshot.created_at),
     }
+
+
+@router.get("/council/latest")
+def get_latest_council(db: Session = Depends(get_db)):
+    """Latest persisted council decision report across all markets (architecture.md §17.9)."""
+    row = db.query(CouncilReport).order_by(CouncilReport.id.desc()).first()
+    if row is None or not row.report:
+        raise HTTPException(status_code=404, detail="No council report yet — run the pipeline")
+    return row.report
+
+
+@router.get("/markets/{market}/council")
+def get_market_council(market: str, db: Session = Depends(get_db)):
+    """Latest persisted council decision report for one market (architecture.md §17.9).
+
+    Reads from council_reports — the council itself runs in pipeline stage 7,
+    not on this request.
+    """
+    row = (
+        db.query(CouncilReport)
+        .filter(CouncilReport.market == market)
+        .order_by(CouncilReport.id.desc())
+        .first()
+    )
+    if row is None or not row.report:
+        raise HTTPException(status_code=404, detail=f"No council report for {market}")
+    return row.report
 
 
 @router.get("/markets/{market}/districts")

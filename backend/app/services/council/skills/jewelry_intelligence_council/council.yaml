@@ -1,0 +1,113 @@
+council_name: 珠宝海外市场战略情报智囊团
+domain: 珠宝海外市场战略情报（黄金 / 钻石 / K金 / 珍珠 / 彩宝）
+version: "2.0"
+locale: zh-CN
+description: >
+  在情报数据清洗结果之后，引入多位领域专家 Skill 对同一批市场情报进行并行分析，
+  再由总参谋 Skill 汇总为可供管理层与业务团队直接执行的战略行动建议。
+
+# 执行模式：五位专家并行分析，总参谋串行综合
+execution_mode: parallel_then_synthesis
+
+# 参与分析的专家 Skill（并行 wave）
+experts:
+  - id: product_marketing_strategist
+    name: 产品营销战略专家
+    file: experts/product_marketing_strategist.md
+    focus: 珠宝品类机会 / 金钻珍珠彩宝趋势 / 价格带 / 节日营销 / 社媒内容打法 / 新品方向
+
+  - id: competitor_strategy_analyst
+    name: 竞品战略专家
+    file: experts/competitor_strategy_analyst.md
+    focus: 国际与本地品牌动作 / 门店扩张 / 定价策略 / 联名代言广告投放 / 渠道变化
+
+  - id: consumer_insight_analyst
+    name: 消费者洞察专家
+    file: experts/consumer_insight_analyst.md
+    focus: 婚庆消费 / 悦己消费 / 年轻客群 / 高净值客群 / 宗教文化偏好 / 社媒情绪
+
+  - id: risk_compliance_analyst
+    name: 风险合规专家
+    file: experts/risk_compliance_analyst.md
+    focus: 金价波动 / 汇率 / 关税 / 广告合规 / 文化禁忌 / 地缘政治与监管变化
+
+  - id: military_strategist
+    name: 兵法谋士
+    file: experts/military_strategist.md
+    focus: 用孙子兵法 + 毛选框架判局 / 主要矛盾 / 匹配 12 条策略库计策 / 上中下三策思路
+    knowledge:
+      - knowledge/sunzi-strategy/        # 孙子兵法 skill（vendored）：13 条原则
+      - knowledge/maoxuan/               # 毛选 skill（vendored）：7 心智模型 + 10 决策启发式
+      - knowledge/strategy_library.json  # 12 条兵法策略库（周大福海外市场专属计策）
+
+# 综合环节专家
+synthesis_expert: chief_strategy_officer
+synthesis_expert_file: experts/chief_strategy_officer.md
+
+# 编排与综合 prompt
+orchestrator_prompt: prompts/council_orchestrator.md
+synthesis_prompt: prompts/synthesis_prompt.md
+
+# 输入 / 输出契约
+input_schema: input_schema.json
+output_schema: output_schema.json
+
+# 最终输出必须包含的字段
+required_output_sections:
+  - council_summary
+  - key_signals
+  - opportunities
+  - risks
+  - watch_items
+  - strategic_options       # upper / middle / lower
+  - department_actions      # product / marketing / channel / management / risk
+  - evidence_chain
+  - expert_disagreements
+  - confidence
+  - next_observation_points
+
+# 置信度政策
+confidence_policy:
+  rule: 每一个 opportunity / risk / signal 都必须给出 confidence。
+  downgrade_when:
+    - 证据来源仅 1 条
+    - 来源类型为 social 且未被其它来源交叉验证
+    - 情报 confidence 字段平均值 < 0.6
+    - 趋势仅在单一时间点出现，无连续观测
+  levels:
+    high: 一手来源 ≥ 2 条且专家无重大分歧
+    medium: 证据混合或专家存在可控分歧
+    low: 证据稀薄 / 来源单一 / 专家分歧未解决
+  hard_rule: 证据不足时降低置信度并转入 watch_items，禁止用强判断填补。
+
+# 证据政策
+evidence_policy:
+  rule: 每一个判断、机会、风险、行动建议都必须绑定至少一个情报 id。
+  no_evidence_no_claim: 没有证据支撑的判断不得写入输出。
+  source_ranking:
+    - regulator        # 监管机构（一手）
+    - brand_official   # 品牌官方（一手）
+    - report           # 行业报告（一手）
+    - ecommerce        # 电商平台数据（半一手）
+    - news             # 媒体（二手）
+    - social           # 社媒（二手，需交叉验证）
+  evidence_chain_required: true
+
+# 领域分析铁律（所有专家与总参谋共同遵守）
+domain_rules:
+  - 不允许泛泛而谈，每个判断必须可回溯到具体情报。
+  - 不把黄金价格上涨简单等同于利好。
+  - 严格区分投资金条 / 饰品金 / 婚庆金 / 悦己消费，它们对金价的反应方向不同。
+  - 行动建议必须具体到部门、市场、品类、渠道、动作。
+  - 区分情报本身的 sentiment 与其对我方业务的 impact 方向。
+  - 保留专家分歧，不和稀泥。
+  - 输出必须让管理层和业务团队不经翻译即可执行。
+
+# 与主项目的接入点（architecture.md §17）
+integration:
+  stage: 主流水线阶段 7「行动」
+  upstream: intelligence_events 表（主流水线阶段 3-4 产出的结构化事件）
+  input_adapter: backend/app/services/council/adapter.py —— 按 market 聚合为 intelligence_batch
+  orchestrator: backend/app/services/council/orchestrator.py —— 5 专家并行 → 总参谋综合
+  downstream: action_items 表（从 department_actions 派生）/ GET /api/markets/{market}/council
+  note: 本 skill 由后端 council 包加载执行；skill 文件本身不含运行框架。

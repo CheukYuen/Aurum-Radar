@@ -1,4 +1,4 @@
-"""SQLAlchemy models — the 7 tables of architecture.md §8.
+"""SQLAlchemy models — the tables of architecture.md §8.
 
 Importing this package registers every model on ``Base.metadata`` so that
 app/database/init_db.py can create all tables.
@@ -16,6 +16,7 @@ Decoupling design (the schema is expected to evolve — fields added / removed):
     not yet modelled, so new data needs no migration.
 """
 from app.models.action_item import ActionItem
+from app.models.council_report import CouncilReport
 from app.models.daily_brief import DailyBrief
 from app.models.district import District
 from app.models.intelligence_event import IntelligenceEvent
@@ -29,6 +30,7 @@ __all__ = [
     "MarketSnapshot",
     "DailyBrief",
     "ActionItem",
+    "CouncilReport",
     "JobRun",
     "District",
 ]

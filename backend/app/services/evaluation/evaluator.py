@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.models import IntelligenceEvent, RawDocument
 from app.services.evaluation.checks import run_rule_checks
-from app.services.evaluation.critic import critique_event, critique_strategy
+from app.services.evaluation.critic import critique_council, critique_event
 
 
 def _load_events(db: Session, market: str) -> list[dict]:
@@ -52,7 +52,7 @@ def _source_excerpts(db: Session, events: list[dict]) -> dict[int, str]:
 
 
 def run_evaluation(
-    db: Session, market: str, strategy_result: dict | None = None
+    db: Session, market: str, council_report: dict | None = None
 ) -> dict:
     """Evaluate the agent's output for one market; return a quality report."""
     events = _load_events(db, market)
@@ -71,8 +71,8 @@ def run_evaluation(
     grounded = sum(1 for v in verdicts if v.get("verdict") == "grounded")
     cred_ok = sum(1 for v in verdicts if v.get("credibility_ok") is True)
 
-    # holistic strategy logic review (reasoning model)
-    strategy_verdict = critique_strategy(strategy_result) if strategy_result else None
+    # holistic council decision-report logic review (reasoning model)
+    council_verdict = critique_council(council_report) if council_report else None
 
     report = {
         "market": market,
@@ -80,7 +80,7 @@ def run_evaluation(
         "event_verdicts": verdicts,
         "grounding_pass_rate": round(grounded / len(events), 3),
         "credibility_match_rate": round(cred_ok / len(events), 3),
-        "strategy_logic": strategy_verdict,
+        "council_logic": council_verdict,
         "human_review_list": _human_review(rule, verdicts),
     }
     report["overall_quality_score"] = _overall_score(report)

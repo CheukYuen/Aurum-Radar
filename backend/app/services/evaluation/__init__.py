@@ -1,4 +1,4 @@
-"""Evaluation agent — a QA pass over the main agent's output (architecture.md §17).
+"""Evaluation agent — a QA pass over the main agent's output.
 
 No ground truth exists (open-info analysis), so 'correctness' = evidence
 grounding + logical consistency + credibility soundness. Credibility is
