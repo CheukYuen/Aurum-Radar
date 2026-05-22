@@ -1,17 +1,19 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import WorldMap, { Legend } from './WorldMap'
 import CountryPanel from './CountryPanel'
 import KeyAnalysis from './KeyAnalysis'
 import BusinessImpact from './BusinessImpact'
 import Icon from '../ui/Icon'
-import type { PageId } from '../../api/types'
+import { fetchCountries, fetchCountryDetail, fetchDashboardSummary } from '../../api'
+import type { CountryDetail, CountryNode, PageId } from '../../api/types'
+import type { DashboardSummary } from '../../api'
 
-function AiRadarStrip({ onOpenBriefing }: { onOpenBriefing: () => void }) {
+function AiRadarStrip({ summary, onOpenBriefing }: { summary: DashboardSummary | null; onOpenBriefing: () => void }) {
   const stats = [
-    { label: '今日已扫描市场', value: '128', unit: '个' },
-    { label: '整合公开信息',   value: '2,458', unit: '条' },
-    { label: '高优先级变化',   value: '23', unit: '条' },
-    { label: '战略判断生成',   value: '12', unit: '条' },
+    { label: '今日已扫描市场', value: summary ? String(summary.radar.markets_scanned) : '—', unit: '个' },
+    { label: '整合公开信息',   value: summary ? summary.radar.documents_integrated.toLocaleString() : '—', unit: '条' },
+    { label: '高优先级变化',   value: summary ? String(summary.radar.high_priority_changes) : '—', unit: '条' },
+    { label: '战略判断生成',   value: summary ? String(summary.radar.judgments_generated) : '—', unit: '条' },
   ]
   return (
     <div style={{
@@ -56,9 +58,11 @@ function AiRadarStrip({ onOpenBriefing }: { onOpenBriefing: () => void }) {
 
       {/* Timestamp + briefing button */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, paddingLeft: 16, borderLeft: '1px solid var(--line-strong)', flexShrink: 0 }}>
-        <div style={{ textAlign: 'right' }}>
-          <div style={{ fontSize: 10.5, color: 'var(--ink-4)', letterSpacing: '.04em' }}>最近更新</div>
-          <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--ink-2)', fontFamily: 'var(--font-mono)' }}>2026/05/21 09:30</div>
+          <div style={{ textAlign: 'right' }}>
+            <div style={{ fontSize: 10.5, color: 'var(--ink-4)', letterSpacing: '.04em' }}>最近更新</div>
+          <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--ink-2)', fontFamily: 'var(--font-mono)' }}>
+            {summary?.as_of ? new Date(summary.as_of).toLocaleString('zh-CN', { hour12: false }) : '—'}
+          </div>
         </div>
         <button onClick={onOpenBriefing} style={{
           display: 'flex', alignItems: 'center', gap: 6,
@@ -77,7 +81,28 @@ function AiRadarStrip({ onOpenBriefing }: { onOpenBriefing: () => void }) {
 }
 
 export default function OverviewPage({ onNav, onOpenBriefing }: { onNav: (id: PageId) => void; onOpenBriefing: () => void }) {
-  const [selected, setSelected] = useState('sg')
+  const [selected, setSelected] = useState('Singapore')
+  const [countries, setCountries] = useState<CountryNode[]>([])
+  const [countryDetail, setCountryDetail] = useState<CountryDetail | null>(null)
+  const [summary, setSummary] = useState<DashboardSummary | null>(null)
+
+  useEffect(() => {
+    fetchDashboardSummary().then(setSummary).catch(console.error)
+    fetchCountries().then(items => {
+      setCountries(items)
+      const preferred = items.find(item => item.id === 'Singapore') ?? items[0]
+      if (preferred) setSelected(preferred.id)
+    }).catch(console.error)
+  }, [])
+
+  useEffect(() => {
+    if (!selected) return
+    fetchCountryDetail(selected).then(detail => setCountryDetail(detail ?? null)).catch(error => {
+      console.error(error)
+      setCountryDetail(null)
+    })
+  }, [selected])
+
   return (
     <div style={{
       display: 'grid',
@@ -90,7 +115,7 @@ export default function OverviewPage({ onNav, onOpenBriefing }: { onNav: (id: Pa
       {/* Main map */}
       <div className="card" style={{ padding: 20, gridColumn: '1 / 2', gridRow: '1 / 2' }}>
         {/* AI Radar strip */}
-        <AiRadarStrip onOpenBriefing={onOpenBriefing} />
+        <AiRadarStrip summary={summary} onOpenBriefing={onOpenBriefing} />
 
         <div className="flex justify-between items-center flex-wrap" style={{ marginBottom: 14, gap: 10 }}>
           <div className="flex items-center gap-3">
@@ -116,7 +141,7 @@ export default function OverviewPage({ onNav, onOpenBriefing }: { onNav: (id: Pa
           </div>
         </div>
         <div style={{ position: 'relative', borderRadius: 12, overflow: 'hidden', border: '1px solid var(--line-soft)', background: 'linear-gradient(135deg, var(--pearl-warm), var(--ivory))' }}>
-          <WorldMap selected={selected} onSelect={setSelected} />
+          <WorldMap selected={selected} countries={countries} onSelect={setSelected} />
           <div style={{
             position: 'absolute', left: 18, bottom: 18,
             padding: '10px 14px',
@@ -136,13 +161,13 @@ export default function OverviewPage({ onNav, onOpenBriefing }: { onNav: (id: Pa
 
       {/* Right country panel — spans both rows */}
       <div style={{ gridColumn: '2 / 3', gridRow: '1 / 3' }}>
-        <CountryPanel id={selected} onJumpToMap={onNav} />
+        <CountryPanel detail={countryDetail} onJumpToMap={onNav} />
       </div>
 
       {/* Bottom row */}
       <div style={{ gridColumn: '1 / 2', gridRow: '2 / 3', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-        <KeyAnalysis onCard={onNav} />
-        <BusinessImpact onAct={onNav} />
+        <KeyAnalysis summary={summary} onCard={onNav} />
+        <BusinessImpact detail={countryDetail} onAct={onNav} />
       </div>
     </div>
   )

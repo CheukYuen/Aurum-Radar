@@ -1,15 +1,29 @@
+import { useEffect, useState } from 'react'
 import DiamondMark from '../ui/DiamondMark'
 import Icon from '../ui/Icon'
+import { fetchJobsStatus } from '../../api'
 import type { Filters } from '../../api/types'
 
 // ── Agent status bar (top thin strip) ───────────────────────────
 
 function AgentBar({ onOpenBriefing }: { onOpenBriefing: () => void }) {
+  const [status, setStatus] = useState('连接中')
+  const [lastRun, setLastRun] = useState('—')
+
+  useEffect(() => {
+    fetchJobsStatus().then(data => {
+      setStatus(data.status === 'success' ? '已完成' : data.status === 'running' ? '运行中' : data.status)
+      setLastRun(data.lastRun ? new Date(data.lastRun).toLocaleString('zh-CN', { hour12: false }) : '—')
+    }).catch(error => {
+      console.error(error)
+      setStatus('待连接')
+    })
+  }, [])
+
   const items = [
-    { label: '今日扫描', value: '已完成', dot: 'sage' },
-    { label: '战略简报', value: '已生成', dot: 'sage' },
-    { label: '下次扫描', value: '明日 09:00', dot: 'bone' },
-    { label: null,       value: '公开信息', dot: 'bone' },
+    { label: '流水线状态', value: status, dot: status === '待连接' ? 'bone' : 'sage' },
+    { label: '最近运行', value: lastRun, dot: 'bone' },
+    { label: '数据源', value: '公开信息', dot: 'bone' },
   ]
   return (
     <div style={{
@@ -29,7 +43,7 @@ function AgentBar({ onOpenBriefing }: { onOpenBriefing: () => void }) {
         <span style={{ fontWeight: 700, color: 'var(--ink-2)', letterSpacing: '.06em', textTransform: 'uppercase', fontSize: 11 }}>
           Market Radar Agent
         </span>
-        <span style={{ color: 'var(--sage-deep)', fontWeight: 600 }}>运行中</span>
+        <button onClick={onOpenBriefing} style={{ background: 'transparent', border: 'none', color: 'var(--sage-deep)', fontWeight: 600, cursor: 'pointer', padding: 0 }}>查看简报</button>
       </div>
 
       {/* Status items */}

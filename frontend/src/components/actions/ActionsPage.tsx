@@ -1,12 +1,13 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import DeptCard from './DeptCard'
 import ActionDetail from './ActionDetail'
 import Icon from '../ui/Icon'
-import { DEPTS } from '../../api/mockData'
+import { fetchDepartments } from '../../api'
+import type { Department } from '../../api/types'
 
 function ActStat({ icon, label, value, unit, delta, deltaKind = 'sage', color }: {
   icon: string; label: string; value: string; unit: string;
-  delta: string; deltaKind?: 'sage' | 'clay'; color?: string
+  delta?: string; deltaKind?: 'sage' | 'clay'; color?: string
 }) {
   const bgColor = color === 'clay'
     ? 'linear-gradient(135deg, var(--clay-tint), #F8EBE7)'
@@ -30,10 +31,14 @@ function ActStat({ icon, label, value, unit, delta, deltaKind = 'sage', color }:
           <span style={{ fontSize: 13, color: 'var(--ink-3)' }}>{unit}</span>
         </div>
         <div style={{ fontSize: 11.5, color: 'var(--ink-3)', marginTop: 4 }}>
-          较上月
-          <span style={{ marginLeft: 6, fontWeight: 600, color: deltaKind === 'sage' ? 'var(--sage-deep)' : 'var(--clay-deep)' }}>
-            {delta}
-          </span>
+          {delta ? (
+            <>
+              较上月
+              <span style={{ marginLeft: 6, fontWeight: 600, color: deltaKind === 'sage' ? 'var(--sage-deep)' : 'var(--clay-deep)' }}>
+                {delta}
+              </span>
+            </>
+          ) : '库内最新状态'}
         </div>
       </div>
     </div>
@@ -47,9 +52,22 @@ interface ActionsPageProps {
 
 export default function ActionsPage({ activeDept, onDeptChange }: ActionsPageProps = {}) {
   const [localActive, setLocalActive] = useState('mkt')
+  const [departments, setDepartments] = useState<Department[]>([])
   const active = activeDept ?? localActive
   const setActive = (id: string) => { setLocalActive(id); onDeptChange?.(id) }
-  const d = DEPTS.find(x => x.id === active) ?? DEPTS[0]!
+  const d = departments.find(x => x.id === active) ?? departments[0]
+  const totalActions = departments.reduce((sum, item) => sum + (item.actionCount ?? item.steps.length), 0)
+  const highPriority = departments.filter(item => item.priority === 'high').reduce((sum, item) => sum + (item.actionCount ?? 1), 0)
+  const pending = departments.reduce((sum, item) => sum + item.steps.length, 0)
+
+  useEffect(() => {
+    fetchDepartments().then(items => {
+      setDepartments(items)
+      if (items.length > 0 && !items.some(item => item.id === active)) {
+        setActive(items[0]!.id)
+      }
+    }).catch(console.error)
+  }, [active])
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '1fr 480px', gap: 18, padding: 22 }}>
@@ -67,13 +85,16 @@ export default function ActionsPage({ activeDept, onDeptChange }: ActionsPagePro
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14 }}>
-          <ActStat icon="clipboard" label="建议事项总数" value="52" unit="项" delta="+8" deltaKind="sage" />
-          <ActStat icon="alert"     label="高优先级"     value="16" unit="项" delta="+5" deltaKind="clay" color="clay" />
-          <ActStat icon="clock"     label="待推进"       value="23" unit="项" delta="−2" deltaKind="sage" color="indigo" />
+          <ActStat icon="clipboard" label="建议事项总数" value={String(totalActions)} unit="项" />
+          <ActStat icon="alert"     label="高优先级"     value={String(highPriority)} unit="项" deltaKind="clay" color="clay" />
+          <ActStat icon="clock"     label="待推进"       value={String(pending)} unit="项" color="indigo" />
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14 }}>
-          {DEPTS.map(dx => <DeptCard key={dx.id} d={dx} active={dx.id === active} onPick={setActive} />)}
+          {departments.map(dx => <DeptCard key={dx.id} d={dx} active={dx.id === active} onPick={setActive} />)}
+          {departments.length === 0 && (
+            <div className="card" style={{ padding: 18, color: 'var(--ink-3)' }}>暂无行动建议数据</div>
+          )}
         </div>
 
         <div className="card flex items-center gap-3" style={{ padding: 14 }}>
@@ -92,7 +113,7 @@ export default function ActionsPage({ activeDept, onDeptChange }: ActionsPagePro
 
       {/* Right detail */}
       <div style={{ position: 'sticky', top: 18, maxHeight: 'calc(100vh - 140px)' }}>
-        <ActionDetail d={d} />
+        {d ? <ActionDetail d={d} /> : <div className="card" style={{ padding: 24, color: 'var(--ink-3)' }}>请选择行动部门</div>}
       </div>
     </div>
   )

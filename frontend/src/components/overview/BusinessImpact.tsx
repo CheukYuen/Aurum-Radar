@@ -1,30 +1,31 @@
 import Icon from '../ui/Icon'
-import type { PageId } from '../../api/types'
+import type { CountryDetail, PageId } from '../../api/types'
 
-const BLOCKS = [
-  {
-    kind: 'sage', icon: 'diamond', title: '机会',
-    items: ['高端珠宝需求强劲', '免税政策利好', '旅游零售增长'], cta: '把握机会',
-  },
-  {
-    kind: 'clay', icon: 'alert', title: '风险',
-    items: ['区域竞争加剧', '成本与汇率波动', '合规要求趋严'], cta: '管控风险',
-  },
-  {
-    kind: 'gold', icon: 'target', title: '建议动作',
-    items: ['强化品牌与产品差异化', '拓展本地合作渠道', '优化合规与供应链'], cta: '制定计划',
-  },
-]
+export default function BusinessImpact({ detail, onAct }: { detail?: CountryDetail | null; onAct: (id: PageId) => void }) {
+  const impacts = detail?.impacts ?? []
+  const blocks = [
+    {
+      kind: 'sage', icon: 'diamond', title: '机会',
+      items: impacts.filter(item => item.kind === 'opportunity').map(item => item.text), cta: '把握机会',
+    },
+    {
+      kind: 'clay', icon: 'alert', title: '风险',
+      items: impacts.filter(item => item.kind === 'risk').map(item => item.text), cta: '管控风险',
+    },
+    {
+      kind: 'gold', icon: 'target', title: '需关注',
+      items: impacts.filter(item => item.kind === 'watch').map(item => item.text), cta: '制定计划',
+    },
+  ]
 
-export default function BusinessImpact({ onAct }: { onAct: (id: PageId) => void }) {
   return (
     <div className="card" style={{ padding: 22 }}>
       <div className="flex justify-between items-center" style={{ marginBottom: 16 }}>
         <h3 className="facet-rule" style={{ margin: 0, fontFamily: 'var(--font-serif)', fontSize: 18, fontWeight: 600 }}>业务影响与建议</h3>
-        <span style={{ fontSize: 11, color: 'var(--ink-3)' }}>基于当前国家 · 新加坡</span>
+        <span style={{ fontSize: 11, color: 'var(--ink-3)' }}>基于当前国家 · {detail?.name ?? '—'}</span>
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14 }}>
-        {BLOCKS.map((b, i) => {
+        {blocks.map((b, i) => {
           const bg = b.kind === 'sage'
             ? 'linear-gradient(180deg, var(--sage-tint), rgba(228,236,224,.4))'
             : b.kind === 'clay'
@@ -43,7 +44,7 @@ export default function BusinessImpact({ onAct }: { onAct: (id: PageId) => void 
                 <span style={{ fontFamily: 'var(--font-serif)', fontSize: 16, fontWeight: 600 }}>{b.title}</span>
               </div>
               <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {b.items.map((t, j) => (
+                {(b.items.length > 0 ? b.items : ['暂无数据']).map((t, j) => (
                   <li key={j} style={{ fontSize: 13, color: 'var(--ink-2)', display: 'flex', gap: 8, lineHeight: 1.5 }}>
                     <span style={{ width: 4, height: 4, borderRadius: 4, background: 'currentColor', marginTop: 8, flexShrink: 0, opacity: .6 }} />
                     {t}

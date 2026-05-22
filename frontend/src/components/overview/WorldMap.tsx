@@ -1,4 +1,4 @@
-import { CONTINENT_DOTS, COUNTRIES } from '../../api/mockData'
+import { CONTINENT_DOTS } from '../../api/mapLayout'
 import type { CountryNode, StatusKind } from '../../api/types'
 
 const STATUS_COLORS: Record<StatusKind, { fill: string; glow: string; label: string }> = {
@@ -45,10 +45,13 @@ function CountryNodeEl({ c, hot, onClick }: { c: CountryNode; hot: boolean; onCl
 
 interface WorldMapProps {
   selected: string
+  countries: CountryNode[]
   onSelect: (id: string) => void
 }
 
-export default function WorldMap({ selected, onSelect }: WorldMapProps) {
+export default function WorldMap({ selected, countries, onSelect }: WorldMapProps) {
+  const hub = countries.find(c => c.id === 'Singapore') ?? countries[0]
+
   return (
     <svg viewBox="0 0 1600 780" style={{ width: '100%', height: '100%', display: 'block' }}>
       <defs>
@@ -74,11 +77,11 @@ export default function WorldMap({ selected, onSelect }: WorldMapProps) {
           fill={(x > 1100 && y > 380 && y < 520) || (x > 750 && x < 900 && y < 280) ? '#C8A569' : '#A89776'}
           opacity={(x > 1100 && y > 380 && y < 520) || (x > 750 && x < 900 && y < 280) ? .55 : .35} />
       ))}
-      {COUNTRIES.filter(c => c.id !== 'sg').map(c =>
-        <Arc key={c.id} from={{ x: 1240, y: 460 }} to={{ x: c.x, y: c.y }}
-          opacity={selected === c.id || selected === 'sg' ? .55 : .25} />
+      {hub && countries.filter(c => c.id !== hub.id).map(c =>
+        <Arc key={c.id} from={{ x: hub.x, y: hub.y }} to={{ x: c.x, y: c.y }}
+          opacity={selected === c.id || selected === hub.id ? .55 : .25} />
       )}
-      {COUNTRIES.map(c => (
+      {countries.map(c => (
         <CountryNodeEl key={c.id} c={c} hot={selected === c.id} onClick={onSelect} />
       ))}
     </svg>

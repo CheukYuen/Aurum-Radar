@@ -1,4 +1,4 @@
-import { SG_REGIONS } from '../../api/mockData'
+import type { SgRegion } from '../../api/types'
 
 const SG_LAND_PATH =
   'M 110 280 ' +
@@ -16,10 +16,13 @@ const SG_LAND_PATH =
 
 interface SingaporeMapProps {
   selected: string
+  regions: SgRegion[]
   onSelect: (id: string) => void
 }
 
-export default function SingaporeMap({ selected, onSelect }: SingaporeMapProps) {
+export default function SingaporeMap({ selected, regions, onSelect }: SingaporeMapProps) {
+  const selectedRegion = regions.find(region => region.id === selected)
+
   return (
     <svg viewBox="0 0 1150 560" style={{ width: '100%', height: '100%', display: 'block' }}>
       <defs>
@@ -47,9 +50,9 @@ export default function SingaporeMap({ selected, onSelect }: SingaporeMapProps) 
         style={{ filter: 'drop-shadow(0 8px 18px rgba(120,92,40,.15))' }} />
       <path d={SG_LAND_PATH} fill="none" stroke="rgba(255,252,244,.7)" strokeWidth="2" transform="translate(0,-1.5)" />
 
-      {selected === 'orchard' && <circle cx="540" cy="340" r="100" fill="url(#orchard-glow)" />}
+      {selectedRegion && <circle cx={selectedRegion.x} cy={selectedRegion.y} r="100" fill="url(#orchard-glow)" />}
 
-      {SG_REGIONS.map(r => {
+      {regions.map(r => {
         const isSel = selected === r.id
         return (
           <g key={r.id} style={{ cursor: 'pointer' }} onClick={() => onSelect(r.id)}>
