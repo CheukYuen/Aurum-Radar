@@ -46,7 +46,8 @@ def extract_events(docs: list[RawDocumentIn]) -> list[IntelligenceEventIn]:
         except Exception as exc:  # noqa: BLE001 - one bad doc must not abort the batch
             logger.error(f"Extraction failed for {doc.url}: {exc}")
 
-    logger.info(f"Extract: {len(docs)} docs -> {len(events)} events")
+    events = _dedup_events(events)
+    logger.info(f"Extract: {len(docs)} docs -> {len(events)} events (deduped)")
     return events
 
 
@@ -68,8 +69,44 @@ def _validate_event(raw: dict, doc: RawDocumentIn) -> IntelligenceEventIn | None
             source_name=doc.source_name,
             credibility_level=doc.credibility_level,
             published_at=doc.published_at,
-            # TODO: set raw_document_id once docs are persisted and have ids
+            source_content_hash=doc.content_hash,  # links event -> raw_document
         )
     except (KeyError, ValueError) as exc:
         logger.error(f"Invalid LLM event JSON ({exc}) for {doc.url}")
         return None
+
+
+# --- near-duplicate event removal -----------------------------------------
+
+def _dedup_events(events: list[IntelligenceEventIn]) -> list[IntelligenceEventIn]:
+    """Drop near-duplicate events (multiple sources, same underlying story).
+
+    Rule-based char-bigram Jaccard on title+summary; the most credible
+    version of each story survives.
+    """
+    from app.services.taxonomy import CREDIBILITY_RANK
+
+    ordered = sorted(  # most-credible first so it is the one kept
+        events, key=lambda e: CREDIBILITY_RANK.get(e.credibility_level, 9)
+    )
+    kept: list[IntelligenceEventIn] = []
+    kept_sigs: list[set[str]] = []
+    for ev in ordered:
+        sig = _bigrams(f"{ev.title} {ev.summary}")
+        if any(_jaccard(sig, ks) >= 0.5 for ks in kept_sigs):
+            logger.info(f"Dedup: dropped near-duplicate «{ev.title}»")
+            continue
+        kept.append(ev)
+        kept_sigs.append(sig)
+    return kept
+
+
+def _bigrams(text: str) -> set[str]:
+    t = "".join(ch for ch in (text or "").lower() if ch.isalnum())
+    return {t[i:i + 2] for i in range(len(t) - 1)} if len(t) > 1 else {t}
+
+
+def _jaccard(a: set[str], b: set[str]) -> float:
+    if not a or not b:
+        return 0.0
+    return len(a & b) / len(a | b)

@@ -63,9 +63,38 @@ KEYWORD_EVENT_TYPE: dict[EventType, list[str]] = {
     ],
 }
 
-# --- credibility fallback (stage 2) ----------------------------------------
-# TODO: real credibility should come from per-source config
-#       (data_probe/config/sources.yaml). This is a coarse fallback by type.
+# --- source credibility (stage 2), architecture.md §9 / PRD §9.4 ----------
+# Per-source credibility, keyed by a case-insensitive substring of source_name.
+SOURCE_CREDIBILITY: dict[str, CredibilityLevel] = {
+    # S — 政府 / 监管 / 平台官方公告
+    "customs": CredibilityLevel.S,
+    "monetary authority": CredibilityLevel.S,
+    "shopee help": CredibilityLevel.S,
+    "tiktok shop": CredibilityLevel.S,
+    "world gold council": CredibilityLevel.S,
+    # A — 主流权威媒体 / 权威机构
+    "straits times": CredibilityLevel.A,
+    "business times": CredibilityLevel.A,
+    "channel news asia": CredibilityLevel.A,
+    "reuters": CredibilityLevel.A,
+    "bloomberg": CredibilityLevel.A,
+    "yahoo finance": CredibilityLevel.A,
+    # B — 垂直 / 区域媒体、品牌官网、商场
+    "vnexpress": CredibilityLevel.B,
+    "vietnam+": CredibilityLevel.B,
+    "malay mail": CredibilityLevel.B,
+    "cna luxury": CredibilityLevel.B,
+    "cna lifestyle": CredibilityLevel.B,
+    "alvinology": CredibilityLevel.B,
+    "sassy mama": CredibilityLevel.B,
+    "vogue": CredibilityLevel.B,
+    "tatler": CredibilityLevel.B,
+    "tiffany": CredibilityLevel.B,
+    "cartier": CredibilityLevel.B,
+    "chow tai fook": CredibilityLevel.B,
+}
+
+# fallback by source_type when source_name is not matched above
 DEFAULT_CREDIBILITY: dict[SourceType, CredibilityLevel] = {
     SourceType.regulation: CredibilityLevel.S,
     SourceType.platform: CredibilityLevel.S,
@@ -76,6 +105,23 @@ DEFAULT_CREDIBILITY: dict[SourceType, CredibilityLevel] = {
     SourceType.mall: CredibilityLevel.B,
     SourceType.social: CredibilityLevel.C,
 }
+
+# numeric rank (lower = more credible) — for comparison / dedup tie-break
+CREDIBILITY_RANK: dict[CredibilityLevel, int] = {
+    CredibilityLevel.S: 0,
+    CredibilityLevel.A: 1,
+    CredibilityLevel.B: 2,
+    CredibilityLevel.C: 3,
+}
+
+
+def credibility_for(source_name: str | None, source_type: SourceType) -> CredibilityLevel:
+    """Resolve credibility — by source name first, else by source_type."""
+    name = (source_name or "").lower()
+    for key, level in SOURCE_CREDIBILITY.items():
+        if key in name:
+            return level
+    return DEFAULT_CREDIBILITY.get(source_type, CredibilityLevel.B)
 
 # --- rule scoring (stage 4) ------------------------------------------------
 # base (opportunity_bias, risk_bias) per event type, 0-100 before adjustment.

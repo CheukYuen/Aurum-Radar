@@ -62,13 +62,14 @@ class IntelligenceEventIn(BaseModel):
     opportunity_score: int = Field(default=0, ge=0, le=100)
     risk_score: int = Field(default=0, ge=0, le=100)
     source_url: str
-    raw_document_id: int | None = None  # TODO: real FK once app/models exists
+    raw_document_id: int | None = None  # FK -> raw_documents.id (linked at score stage)
 
     # --- carried from the source raw_document for scoring / display ---
     # (not columns on intelligence_events — joined via raw_document_id)
     source_name: str | None = None
     credibility_level: CredibilityLevel | None = None
     published_at: datetime | None = None
+    source_content_hash: str | None = None  # pipeline-internal: event -> raw_document link
 
 
 class MarketSnapshotIn(BaseModel):
@@ -99,7 +100,7 @@ class ActionItemIn(BaseModel):
     expected_output: str | None = None
     success_metric: str | None = None
     status: ActionStatus = ActionStatus.pending
-    event_id: int | None = None  # TODO: real FK once app/models exists
+    event_id: int | None = None  # FK -> intelligence_events.id (None for strategy-derived)
     source_url: str | None = None
 
 

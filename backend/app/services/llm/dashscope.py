@@ -76,9 +76,12 @@ class DashScopeLLM:
         model: str | None = None,
         temperature: float = 0.3,
     ) -> dict[str, Any]:
-        """Generic JSON chat — used by the strategy sandbox (§17)."""
+        """Generic JSON chat. Defaults to the reasoning-tier model (qwen-max);
+        callers pass ``model`` to pick a cheaper tier (architecture.md §12).
+        Used by the strategy sandbox (§17) and the evaluation agent.
+        """
         return self._chat_json(
-            model or settings.DASHSCOPE_MODEL_SUMMARY, system, user, temperature
+            model or settings.DASHSCOPE_MODEL_REASONING, system, user, temperature
         )
 
     # ---- stage 3: event extraction ----------------------------------------
@@ -103,6 +106,11 @@ class DashScopeLLM:
 候选事件类型（仅供参考，可修正）：{candidate_event_type or "未知"}
 标题：{title}
 正文：{body or "（无正文，仅标题可用）"}
+
+判级标准（务必遵守，不要滥用 P0）：
+- priority：P0 仅限重大法规变化 / 重大负面舆情 / 平台重大政策，需 24-48 小时内跟进；
+  竞品动作、产品趋势、节庆与渠道机会一律用 P1；信号弱或单一来源用 P2。
+- confidence：取决于来源权威性与信息明确度，多源印证才给 high，单一来源最多 medium。
 
 请输出 JSON，字段如下：
 {{

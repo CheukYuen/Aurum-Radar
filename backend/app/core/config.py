@@ -18,9 +18,12 @@ class Settings(BaseSettings):
 
     DASHSCOPE_API_KEY: str = ""
     DASHSCOPE_BASE_URL: str = "https://dashscope-intl.aliyuncs.com/compatible-mode/v1"
-    DASHSCOPE_MODEL_EXTRACT: str = "qwen-plus"
-    DASHSCOPE_MODEL_SUMMARY: str = "qwen-plus"
+    # model tiering — architecture.md §12
+    DASHSCOPE_MODEL_LIGHT: str = "qwen-flash"      # 轻量任务（逐条评估校验）
+    DASHSCOPE_MODEL_EXTRACT: str = "qwen-plus"     # 事件抽取
+    DASHSCOPE_MODEL_SUMMARY: str = "qwen-plus"     # 研判 / 简报
     DASHSCOPE_MODEL_ACTION: str = "qwen-plus"
+    DASHSCOPE_MODEL_REASONING: str = "qwen-max"    # 复杂推理（战略沙盘 / 逻辑审查）
 
     SCHEDULER_ENABLED: bool = False
 
