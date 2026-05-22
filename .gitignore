@@ -15,3 +15,6 @@ __pycache__/
 *.pyc
 .venv/
 backend/.venv/
+
+# Generated run artifacts
+backend/strategy_*_output.json

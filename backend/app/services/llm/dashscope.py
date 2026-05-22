@@ -68,6 +68,19 @@ class DashScopeLLM:
                     time.sleep(_BACKOFF_SECONDS * (attempt + 1))
         raise RuntimeError(f"LLM call failed after retries: {last_err}")
 
+    def chat_json(
+        self,
+        *,
+        system: str,
+        user: str,
+        model: str | None = None,
+        temperature: float = 0.3,
+    ) -> dict[str, Any]:
+        """Generic JSON chat — used by the strategy sandbox (§17)."""
+        return self._chat_json(
+            model or settings.DASHSCOPE_MODEL_SUMMARY, system, user, temperature
+        )
+
     # ---- stage 3: event extraction ----------------------------------------
     def extract_event(
         self,
