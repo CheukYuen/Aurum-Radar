@@ -126,6 +126,8 @@ export interface DeptStep {
   goal: string
   how: string
   when: string
+  expectedOutput?: string
+  successMetric?: string
 }
 
 export interface DeptRef {
@@ -152,6 +154,27 @@ export interface Department {
   goal: string
   steps: DeptStep[]
   refs: DeptRef[]
+}
+
+// ── Council strategy (上中下三策) ─────────────────────────────────
+
+export type StrategyTier = 'upper' | 'middle' | 'lower'
+
+export interface StrategyOption {
+  tier: StrategyTier
+  name: string
+  classicalBasis: string
+  description: string
+  preconditions: string[]
+  cost: string
+  expectedOutcome: string
+}
+
+export interface CouncilStrategy {
+  market: string
+  summary: string
+  timeWindow: string
+  options: StrategyOption[]
 }
 
 export interface DailyBriefMarket {

@@ -100,8 +100,9 @@ class ActionItemIn(BaseModel):
     expected_output: str | None = None
     success_metric: str | None = None
     status: ActionStatus = ActionStatus.pending
-    event_id: int | None = None  # FK -> intelligence_events.id (None for strategy-derived)
+    event_id: int | None = None  # FK -> intelligence_events.id (None for council-derived)
     source_url: str | None = None
+    extra: dict = Field(default_factory=dict)  # evidence_ids / category / channel — traceability
 
 
 class DailyBriefIn(BaseModel):

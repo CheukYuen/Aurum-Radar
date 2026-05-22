@@ -104,6 +104,16 @@ export default function ActionDetail({ d }: { d: Department }) {
                 <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '4px 12px', fontSize: 12, color: 'var(--ink-2)' }}>
                   <span style={{ color: 'var(--ink-3)' }}>目标:</span><span>{s.goal}</span>
                   <span style={{ color: 'var(--ink-3)' }}>执行:</span><span>{s.how}</span>
+                  {s.expectedOutput && (
+                    <>
+                      <span style={{ color: 'var(--ink-3)' }}>产出:</span><span>{s.expectedOutput}</span>
+                    </>
+                  )}
+                  {s.successMetric && (
+                    <>
+                      <span style={{ color: 'var(--ink-3)' }}>指标:</span><span>{s.successMetric}</span>
+                    </>
+                  )}
                   <span style={{ color: 'var(--ink-3)' }}>时间:</span><span style={{ color: 'var(--gold-2)', fontWeight: 600 }}>{s.when}</span>
                 </div>
               </div>

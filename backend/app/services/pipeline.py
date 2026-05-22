@@ -33,8 +33,8 @@ from app.schemas import (
     StageResult,
     StageStatus,
 )
-from app.services.action import generate_actions
 from app.services.brief import generate_brief
+from app.services.council import derive_actions, run_council
 from app.services.extraction import extract_events
 from app.services.forecast import forecast_markets
 from app.services.ingestion import clean_documents, collect_documents
@@ -49,6 +49,7 @@ class PipelineContext:
 
     def __init__(self, db: Session | None = None) -> None:
         self.db = db
+        self.markets: list[str] = []
         self.raw_documents: list[RawDocumentIn] = []
         self.clean_documents: list[RawDocumentIn] = []
         self.hash_id_map: dict[str, int] = {}  # content_hash -> raw_documents.id
@@ -76,6 +77,7 @@ def run_pipeline(
     stages = stages or ALL_STAGES
     db = SessionLocal() if persist else None
     ctx = PipelineContext(db)
+    ctx.markets = markets
     if seed_documents:
         ctx.raw_documents = list(seed_documents)
 
@@ -206,13 +208,31 @@ def _run_brief(ctx: PipelineContext) -> int:
 
 
 def _run_action(ctx: PipelineContext) -> int:
-    ctx.actions = generate_actions(ctx.events)
+    """Stage 7 — strategic intelligence council (architecture.md §17).
+
+    Runs the council per market: 5 experts -> chief strategy officer -> decision
+    report -> derived action_items. The council reads persisted
+    intelligence_events, so it needs a DB session; in a dry run (persist=False)
+    the stage is a no-op. One market failing does not abort the others.
+    """
+    if ctx.db is None:
+        logger.info("Action: persist=False — the council needs the DB, skipping")
+        return 0
+    all_actions: list[ActionItemIn] = []
+    total = 0
+    for market in ctx.markets:
+        try:
+            report = run_council(ctx.db, market)
+        except Exception as exc:  # noqa: BLE001 - one market failing must not abort
+            logger.warning(f"Action: council skipped for {market}: {exc}")
+            continue
+        repository.save_council_report(ctx.db, market, report)
+        actions = derive_actions(market, report)
+        all_actions.extend(actions)
+        total += repository.save_actions(ctx.db, actions)
+    ctx.actions = all_actions
+    # re-save the brief so its recommended_actions reflects the council output
     if ctx.brief is not None:
-        ctx.brief.recommended_actions = ctx.actions
-    if ctx.db is not None:
-        count = repository.save_actions(ctx.db, ctx.actions)
-        # re-save the brief so its recommended_actions is no longer empty
-        if ctx.brief is not None:
-            repository.save_brief(ctx.db, ctx.brief)
-        return count
-    return len(ctx.actions)
+        ctx.brief.recommended_actions = all_actions
+        repository.save_brief(ctx.db, ctx.brief)
+    return total

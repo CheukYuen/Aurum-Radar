@@ -19,6 +19,7 @@ from sqlalchemy.orm import Session
 
 from app.models import (
     ActionItem,
+    CouncilReport,
     DailyBrief,
     IntelligenceEvent,
     JobRun,
@@ -194,13 +195,22 @@ def save_actions(db: Session, actions: list[ActionItemIn]) -> int:
             success_metric=a.success_metric,
             status=_val(a.status),
             event_id=a.event_id,
-            extra={"source_url": a.source_url},
+            extra={"source_url": a.source_url, **(a.extra or {})},
         )
         for a in actions
     ]
     db.add_all(models)
     db.commit()
     return len(models)
+
+
+# --- stage 7: council_reports ----------------------------------------------
+
+def save_council_report(db: Session, market: str, report: dict) -> int:
+    """Persist one council decision report (architecture.md §17.7)."""
+    db.add(CouncilReport(market=market, report_date=date.today(), report=report))
+    db.commit()
+    return 1
 
 
 # --- job_runs ---------------------------------------------------------------

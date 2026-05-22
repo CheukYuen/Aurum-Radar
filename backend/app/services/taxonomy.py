@@ -150,25 +150,6 @@ PRIORITY_ADJUSTMENT: dict[Priority, int] = {
     Priority.P2: -10,
 }
 
-# --- department action templates (stage 7), PRD §9.7 ----------------------
-DEPARTMENTS: list[str] = [
-    "管理层", "商品团队", "市场营销团队", "渠道团队",
-    "电商运营团队", "法务合规团队", "数据情报团队",
-]
-
-# event_type -> departments most likely to own follow-up (PRD §9.7)
-EVENT_TYPE_DEPARTMENTS: dict[EventType, list[str]] = {
-    EventType.competition: ["管理层", "商品团队", "渠道团队"],
-    EventType.product: ["商品团队", "市场营销团队"],
-    EventType.platform: ["电商运营团队", "法务合规团队"],
-    EventType.social: ["市场营销团队"],
-    EventType.regulation: ["法务合规团队", "管理层"],
-    EventType.pricing: ["商品团队", "管理层"],
-    EventType.channel: ["渠道团队", "市场营销团队"],
-    EventType.festival: ["市场营销团队", "商品团队"],
-}
-
-
 def region_for(market: str) -> str:
     """Best-effort region lookup for a market."""
     return MARKET_REGION.get(market, "Unknown")

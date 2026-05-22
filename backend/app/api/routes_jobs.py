@@ -52,5 +52,5 @@ def get_jobs_status(db: Session = Depends(get_db)):
 def run_job():
     raise HTTPException(
         status_code=501,
-        detail="Manual pipeline trigger is not wired to the API yet; run backend/scripts/run_pipeline.py or run_strategy.py for now.",
+        detail="Manual pipeline trigger is not wired to the API yet; run backend/scripts/run_pipeline.py or run_council.py for now.",
     )
