@@ -51,6 +51,7 @@ class PipelineContext:
         self.db = db
         self.raw_documents: list[RawDocumentIn] = []
         self.clean_documents: list[RawDocumentIn] = []
+        self.hash_id_map: dict[str, int] = {}  # content_hash -> raw_documents.id
         self.events: list[IntelligenceEventIn] = []
         self.snapshots: list[MarketSnapshotIn] = []
         self.brief: DailyBriefIn | None = None
@@ -163,7 +164,8 @@ def _run_ingest(
 def _run_clean(ctx: PipelineContext) -> int:
     ctx.clean_documents = clean_documents(ctx.raw_documents)
     if ctx.db is not None:
-        return repository.save_raw_documents(ctx.db, ctx.clean_documents)
+        ctx.hash_id_map = repository.save_raw_documents(ctx.db, ctx.clean_documents)
+        return len(ctx.hash_id_map)
     return len(ctx.clean_documents)
 
 
@@ -176,6 +178,9 @@ def _run_extract(ctx: PipelineContext) -> int:
 
 def _run_score(ctx: PipelineContext) -> int:
     ctx.events = score_events(ctx.events)
+    # link each event to its source raw_document (FK)
+    for e in ctx.events:
+        e.raw_document_id = ctx.hash_id_map.get(e.source_content_hash)
     if ctx.db is not None:
         return repository.save_events(ctx.db, ctx.events)
     return len(ctx.events)

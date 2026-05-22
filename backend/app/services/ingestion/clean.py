@@ -9,7 +9,7 @@ import hashlib
 from loguru import logger
 
 from app.schemas import RawDocumentIn
-from app.services.taxonomy import DEFAULT_CREDIBILITY, JEWELLERY_KEYWORDS, region_for
+from app.services.taxonomy import JEWELLERY_KEYWORDS, credibility_for, region_for
 
 try:
     from bs4 import BeautifulSoup
@@ -32,9 +32,7 @@ def clean_documents(docs: list[RawDocumentIn]) -> list[RawDocumentIn]:
         if not doc.region:
             doc.region = region_for(doc.market)
         if doc.credibility_level is None:
-            # TODO: read credibility from per-source config (sources.yaml);
-            #       fallback by source_type for now.
-            doc.credibility_level = DEFAULT_CREDIBILITY.get(doc.source_type)
+            doc.credibility_level = credibility_for(doc.source_name, doc.source_type)
 
         doc.relevant = _is_relevant(doc)
         if doc.relevant:

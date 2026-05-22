@@ -46,10 +46,10 @@ def _iso(value: datetime | date | None) -> str | None:
 
 # --- stage 2: raw_documents -------------------------------------------------
 
-def save_raw_documents(db: Session, docs: list[RawDocumentIn]) -> int:
-    """Insert raw documents; skip rows whose content_hash already exists."""
+def save_raw_documents(db: Session, docs: list[RawDocumentIn]) -> dict[str, int]:
+    """Insert raw documents (skip content_hash dups); return content_hash -> id."""
     if not docs:
-        return 0
+        return {}
     rows = [
         dict(
             source_type=_val(d.source_type),
@@ -73,9 +73,19 @@ def save_raw_documents(db: Session, docs: list[RawDocumentIn]) -> int:
     stmt = pg_insert(RawDocument).values(rows).on_conflict_do_nothing(
         index_elements=["content_hash"]
     )
-    result = db.execute(stmt)
+    db.execute(stmt)
     db.commit()
-    return result.rowcount or 0
+    # return content_hash -> id (new and pre-existing rows) so the extract
+    # stage can link intelligence_events.raw_document_id
+    hashes = [d.content_hash for d in docs if d.content_hash]
+    if not hashes:
+        return {}
+    found = (
+        db.query(RawDocument.content_hash, RawDocument.id)
+        .filter(RawDocument.content_hash.in_(hashes))
+        .all()
+    )
+    return {h: i for h, i in found}
 
 
 # --- stages 3-4: intelligence_events ---------------------------------------

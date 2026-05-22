@@ -15,6 +15,7 @@ from datetime import datetime, timezone
 
 from app.database.session import SessionLocal
 from app.schemas import RawDocumentIn, SourceType
+from app.services.evaluation import run_evaluation
 from app.services.pipeline import run_pipeline
 from app.services.strategy import run_sandbox
 
@@ -166,6 +167,27 @@ def _print_strategy(r: dict) -> None:
     print("=" * 72)
 
 
+def _print_evaluation(r: dict) -> None:
+    print("\n" + "=" * 72)
+    print(f"评估报告 —— {r.get('market')}  总体质量分 {r.get('overall_quality_score', '?')}/100")
+    print("=" * 72)
+    rule = r.get("rule_checks", {})
+    print(f"  引用完整率 {rule.get('citation_completeness')}   "
+          f"可回溯率 {rule.get('traceability_rate')}")
+    print(f"  来源可信度分布 {rule.get('credibility_distribution')}")
+    print(f"  证据落地通过率 {r.get('grounding_pass_rate')}   "
+          f"可信度匹配率 {r.get('credibility_match_rate')}")
+    sl = r.get("strategy_logic") or {}
+    print(f"  战略逻辑审查：{sl.get('logic_verdict', '-')}")
+    for issue in sl.get("issues", []):
+        print(f"    - 问题：{issue}")
+    hr = r.get("human_review_list", [])
+    print(f"  需人工复核 {len(hr)} 项：")
+    for it in hr[:8]:
+        print(f"    [事件{it.get('event_id')}] {it.get('issue', '')}")
+    print("=" * 72)
+
+
 def main() -> None:
     print(f"== 主流水线：{len(SEED)} 篇真实文章 → 抽取 / 评分 / 研判 / 简报 ==")
     result = run_pipeline(
@@ -183,14 +205,18 @@ def main() -> None:
     db = SessionLocal()
     try:
         strategy = run_sandbox(db, "Singapore")
+        _print_strategy(strategy)
+        print("\n== 评估 Agent：QA 复核（§17）==")
+        report = run_evaluation(db, "Singapore", strategy_result=strategy)
     finally:
         db.close()
-    _print_strategy(strategy)
+    _print_evaluation(report)
 
-    # also dump the full reasoning chain as JSON for inspection
+    # dump the full reasoning chain + evaluation for inspection
     with open("strategy_singapore_output.json", "w", encoding="utf-8") as f:
-        json.dump(strategy, f, ensure_ascii=False, indent=2)
-    print("完整推理链已写入 backend/strategy_singapore_output.json")
+        json.dump({"strategy": strategy, "evaluation": report},
+                  f, ensure_ascii=False, indent=2)
+    print("完整推理链 + 评估报告已写入 backend/strategy_singapore_output.json")
 
 
 if __name__ == "__main__":
