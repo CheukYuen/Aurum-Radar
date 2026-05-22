@@ -94,8 +94,22 @@ def _load_snapshot(db: Session, market: str) -> dict:
 
 # --- ranking (§17.8: LLM scores dims, rule computes weighted total) -------
 
-def _weighted(scores: dict) -> float:
-    return round(sum(scores.get(d, 0) * w for d, w in RANKING_WEIGHTS.items()), 3)
+def _weighted(scores) -> float:
+    """Weighted total — bulletproof against malformed LLM scores."""
+    if not isinstance(scores, dict):
+        return 0.0
+    total = 0.0
+    for dim, weight in RANKING_WEIGHTS.items():
+        try:
+            total += float(scores.get(dim, 0)) * weight
+        except (TypeError, ValueError):
+            pass
+    return round(total, 3)
+
+
+def _only_dicts(items) -> list[dict]:
+    """Defensive: keep only dict items — the LLM occasionally returns strings."""
+    return [x for x in (items or []) if isinstance(x, dict)]
 
 
 # --- action derivation ----------------------------------------------------
@@ -155,7 +169,7 @@ def run_sandbox(db: Session, market: str) -> dict:
     # step 1 — strategic variables
     sys, usr = prompts.signal_to_variables(market, events, snapshot)
     raw = llm.chat_json(system=sys, user=usr, temperature=0.3)
-    variables = raw.get("variables", {})
+    variables = raw.get("variables") if isinstance(raw.get("variables"), dict) else {}
     result["situation_summary"] = raw.get("situation_summary", "")
     result["strategic_variables"] = variables
     logger.info(f"[strategy] {market}: {len(variables)} variables extracted")
@@ -164,7 +178,9 @@ def run_sandbox(db: Session, market: str) -> dict:
     matched = match_strategies(variables)
     try:
         sys, usr = prompts.strategy_matching(variables, matched)
-        explained = llm.chat_json(system=sys, user=usr, temperature=0.4).get("explained", [])
+        explained = _only_dicts(
+            llm.chat_json(system=sys, user=usr, temperature=0.4).get("explained")
+        )
         by_id = {e.get("strategy_id"): e for e in explained}
         for m in matched:
             m.update({k: v for k, v in by_id.get(m["strategy_id"], {}).items()
@@ -176,17 +192,21 @@ def run_sandbox(db: Session, market: str) -> dict:
 
     # step 3-4 — candidate plans + scenario simulation
     sys, usr = prompts.scenario_simulation(market, variables, matched)
-    candidate_plans = llm.chat_json(system=sys, user=usr, temperature=0.5).get("candidate_plans", [])
+    candidate_plans = _only_dicts(
+        llm.chat_json(system=sys, user=usr, temperature=0.5).get("candidate_plans")
+    )
     result["candidate_plans"] = candidate_plans
     logger.info(f"[strategy] {market}: {len(candidate_plans)} candidate plans")
 
     # step 5 — ranking (LLM scores dims, rule computes weighted total)
     sys, usr = prompts.strategy_ranking(candidate_plans)
-    scored = llm.chat_json(system=sys, user=usr, temperature=0.3).get("scored_plans", [])
+    scored = _only_dicts(
+        llm.chat_json(system=sys, user=usr, temperature=0.3).get("scored_plans")
+    )
     plan_by_id = {p.get("plan_id"): p for p in candidate_plans}
     ranked = []
     for sp in scored:
-        scores = sp.get("scores", {})
+        scores = sp.get("scores") if isinstance(sp.get("scores"), dict) else {}
         plan = plan_by_id.get(sp.get("plan_id"), {})
         ranked.append({
             "plan_id": sp.get("plan_id"),

@@ -57,7 +57,7 @@ def _validate_event(raw: dict, doc: RawDocumentIn) -> IntelligenceEventIn | None
         return IntelligenceEventIn(
             market=doc.market,
             region=doc.region,
-            event_type=EventType(raw["event_type"]),
+            event_type=_coerce_event_type(raw.get("event_type"), doc.candidate_event_type),
             title=raw["title"],
             summary=raw["summary"],
             business_impact=raw["business_impact"],
@@ -74,6 +74,14 @@ def _validate_event(raw: dict, doc: RawDocumentIn) -> IntelligenceEventIn | None
     except (KeyError, ValueError) as exc:
         logger.error(f"Invalid LLM event JSON ({exc}) for {doc.url}")
         return None
+
+
+def _coerce_event_type(value, fallback: EventType | None) -> EventType:
+    """Map the LLM's event_type to the enum; fall back if it drifts off-list."""
+    try:
+        return EventType(value)
+    except (ValueError, TypeError):
+        return fallback or EventType.product
 
 
 # --- near-duplicate event removal -----------------------------------------
