@@ -20,13 +20,20 @@ EXCHANGERATE_BASE = "https://v6.exchangerate-api.com/v6"
 
 
 def _yahoo_quote(symbol: str) -> tuple[float | None, str | None]:
-    """Fetch latest price from Yahoo Finance. Returns (price, error)."""
-    import urllib.parse
+    """Fetch latest price from Yahoo Finance. Returns (price, error).
+
+    Must use Googlebot UA — standard Mozilla UA returns 429 on this machine
+    (Python 3.9 + LibreSSL 2.8.3 + local proxy 127.0.0.1:7897).
+    """
+    import urllib.request, urllib.parse, json as _json
     url = f"{YAHOO_BASE}/{urllib.parse.quote(symbol)}?interval=1d&range=1d"
+    req = urllib.request.Request(url, headers={
+        "User-Agent": "Mozilla/5.0 (compatible; Googlebot/2.1)",
+        "Accept": "application/json, */*",
+    })
     try:
-        resp = requests.get(url, headers=HEADERS, timeout=TIMEOUT)
-        resp.raise_for_status()
-        meta = resp.json()["chart"]["result"][0]["meta"]
+        with urllib.request.urlopen(req, timeout=TIMEOUT) as r:
+            meta = _json.loads(r.read())["chart"]["result"][0]["meta"]
         price = meta.get("regularMarketPrice") or meta.get("previousClose")
         return float(price), None
     except Exception as e:
