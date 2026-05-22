@@ -76,12 +76,12 @@ class DashScopeLLM:
         model: str | None = None,
         temperature: float = 0.3,
     ) -> dict[str, Any]:
-        """Generic JSON chat. Defaults to the reasoning-tier model (qwen-max);
-        callers pass ``model`` to pick a cheaper tier (architecture.md §12).
-        Used by the strategy sandbox (§17) and the evaluation agent.
+        """Generic JSON chat. Defaults to the standard model (qwen-plus) for
+        reliable structured output; callers pass ``model`` to pick another tier
+        (architecture.md §12). Used by the strategy sandbox and evaluation agent.
         """
         return self._chat_json(
-            model or settings.DASHSCOPE_MODEL_REASONING, system, user, temperature
+            model or settings.DASHSCOPE_MODEL_SUMMARY, system, user, temperature
         )
 
     # ---- stage 3: event extraction ----------------------------------------
