@@ -20,3 +20,6 @@ backend/.venv/
 data_probe/output/raw/
 data_probe/output/normalized/
 data_probe/output/summary_*.json
+
+# Generated run artifacts
+backend/strategy_*_output.json
