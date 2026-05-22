@@ -2,13 +2,13 @@ import { useEffect, useState } from 'react'
 import Icon from '../ui/Icon'
 import { fetchLatestBrief } from '../../api'
 
-import type { DailyBrief, PageId } from '../../api/types'
+import type { DailyBrief } from '../../api/types'
 
 interface DailyBriefingDrawerProps {
   open: boolean
   onClose: () => void
-  onNav: (id: PageId) => void
   onNavToActions: (deptId: string) => void
+  onOpenAgentChat: (q?: string) => void
 }
 
 // ── Section header ───────────────────────────────────────────────
@@ -109,7 +109,7 @@ function ImpactCard({ kind, text, delay }: { kind: 'opportunity' | 'risk' | 'wat
 }
 
 // ── Drawer ───────────────────────────────────────────────────────
-export default function DailyBriefingDrawer({ open, onClose, onNav, onNavToActions }: DailyBriefingDrawerProps) {
+export default function DailyBriefingDrawer({ open, onClose, onNavToActions, onOpenAgentChat }: DailyBriefingDrawerProps) {
   const [brief, setBrief] = useState<DailyBrief | null>(null)
 
   useEffect(() => {
@@ -271,36 +271,38 @@ export default function DailyBriefingDrawer({ open, onClose, onNav, onNavToActio
 
         </div>
 
-        {/* Bottom action bar */}
+        {/* Bottom action bar — 4 agent-linked actions */}
         <div style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           padding: '14px 24px',
           background: 'var(--pearl)',
           borderTop: '1px solid var(--line-soft)',
           flexShrink: 0,
         }}>
-          <button onClick={() => { onNav('intel'); onClose(); }} style={{
-            display: 'flex', alignItems: 'center', gap: 8,
-            padding: '10px 16px',
-            background: 'transparent', border: '1px solid var(--line)',
-            borderRadius: 10, fontSize: 13, fontWeight: 600, color: 'var(--ink-2)',
-            cursor: 'pointer',
-          }}>
-            <Icon name="source" size={15} />
-            查看情报来源
-          </button>
-          <button onClick={() => onNavToActions(brief?.actions[0]?.deptId ?? '')} style={{
-            display: 'flex', alignItems: 'center', gap: 8,
-            padding: '10px 20px',
-            background: 'linear-gradient(135deg, var(--gold-3), var(--gold-1))',
-            border: '1px solid var(--gold-2)',
-            borderRadius: 10, fontSize: 13.5, fontWeight: 700, color: 'var(--pearl)',
-            boxShadow: '0 3px 10px rgba(184,145,80,.25), inset 0 1px 0 rgba(255,252,244,.3)',
-            cursor: 'pointer',
-          }}>
-            进入行动建议
-            <Icon name="right" size={14} />
-          </button>
+          <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--ink-4)', letterSpacing: '.12em', textTransform: 'uppercase', marginBottom: 9 }}>
+            继续推理 · Ask Agent
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+            {[
+              { label: '继续追问', q: undefined, icon: 'broadcast' },
+              { label: '解释这个判断', q: '解释今日战略判断的主要依据', icon: 'info' },
+              { label: '查看来源', q: '哪些判断有最高可信来源？', icon: 'source' },
+              { label: '生成部门行动', q: '今天有哪些 P0 / P1 行动建议？', icon: 'check' },
+            ].map(({ label, q, icon }) => (
+              <button key={label} onClick={() => { onOpenAgentChat(q); onClose(); }} style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                padding: '9px 10px',
+                background: 'var(--ivory)', border: '1px solid var(--line)',
+                borderRadius: 10, fontSize: 12.5, fontWeight: 600, color: 'var(--ink-2)',
+                cursor: 'pointer', transition: 'all .15s ease',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--line-strong)'; e.currentTarget.style.background = 'var(--gold-wash)'; e.currentTarget.style.color = 'var(--ink-1)' }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--line)'; e.currentTarget.style.background = 'var(--ivory)'; e.currentTarget.style.color = 'var(--ink-2)' }}
+              >
+                <Icon name={icon} size={13} style={{ color: 'var(--gold-2)' }} />
+                {label}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
     </>

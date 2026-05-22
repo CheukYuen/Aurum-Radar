@@ -1,4 +1,4 @@
-export type PageId = 'overview' | 'map' | 'intel' | 'actions'
+export type PageId = 'overview' | 'intel' | 'actions'
 
 export interface Filters {
   time: string

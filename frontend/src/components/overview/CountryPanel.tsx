@@ -189,7 +189,7 @@ export default function CountryPanel({ detail, onJumpToMap }: CountryPanelProps)
         </>
       )}
 
-      <button onClick={() => onJumpToMap('map')} style={{
+      <button onClick={() => onJumpToMap('intel')} style={{
         marginTop: 'auto',
         background: 'linear-gradient(135deg, var(--gold-1), var(--gold-2))',
         color: 'var(--pearl)',
@@ -199,7 +199,7 @@ export default function CountryPanel({ detail, onJumpToMap }: CountryPanelProps)
         boxShadow: '0 4px 12px rgba(184,145,80,.25), inset 0 1px 0 rgba(255,252,244,.4)',
         cursor: 'pointer',
       }}>
-        进入 {d.name} 地图洞察
+        查看 {d.name} 情报中心
         <Icon name="right" size={14} />
       </button>
     </div>

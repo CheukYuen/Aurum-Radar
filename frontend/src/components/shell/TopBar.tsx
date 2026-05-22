@@ -109,9 +109,10 @@ interface TopBarProps {
   filters: Filters
   setFilters: React.Dispatch<React.SetStateAction<Filters>>
   onOpenBriefing: () => void
+  onOpenAgentChat: () => void
 }
 
-export default function TopBar({ filters, setFilters, onOpenBriefing }: TopBarProps) {
+export default function TopBar({ filters, setFilters, onOpenBriefing, onOpenAgentChat }: TopBarProps) {
   return (
     <header style={{ borderBottom: '1px solid var(--line-soft)', position: 'relative', zIndex: 5 }}>
       {/* Thin agent status bar */}
@@ -157,6 +158,26 @@ export default function TopBar({ filters, setFilters, onOpenBriefing }: TopBarPr
           <FilterPill icon="tag" label="品类 / CATEGORY"
             value={filters.category}
             onClick={() => setFilters(f => ({ ...f, category: f.category === '全部品类' ? '高端品类' : '全部品类' }))} />
+
+          {/* Ask Agent button */}
+          <button onClick={onOpenAgentChat} style={{
+            display: 'flex', alignItems: 'center', gap: 7,
+            padding: '10px 16px',
+            background: 'var(--pearl)',
+            border: '1px solid var(--line-strong)',
+            borderRadius: 12,
+            color: 'var(--gold-2)',
+            fontSize: 13, fontWeight: 700, letterSpacing: '.02em',
+            boxShadow: 'var(--shadow-sm)',
+            whiteSpace: 'nowrap',
+            transition: 'all .15s ease',
+          }}
+          onMouseEnter={e => { e.currentTarget.style.background = 'var(--gold-wash)'; e.currentTarget.style.borderColor = 'var(--gold-2)' }}
+          onMouseLeave={e => { e.currentTarget.style.background = 'var(--pearl)'; e.currentTarget.style.borderColor = 'var(--line-strong)' }}
+          >
+            <Icon name="broadcast" size={14} />
+            Ask Agent
+          </button>
 
           {/* Gold CTA */}
           <button onClick={onOpenBriefing} style={{

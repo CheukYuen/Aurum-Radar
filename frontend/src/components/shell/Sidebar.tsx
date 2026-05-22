@@ -3,7 +3,6 @@ import type { PageId } from '../../api/types'
 
 const NAV: { id: PageId; label: string; sub: string; icon: string }[] = [
   { id: 'overview', label: '概览',   sub: 'Overview',     icon: 'home'  },
-  { id: 'map',      label: '地图洞察', sub: 'Map Insight',  icon: 'map'   },
   { id: 'intel',    label: '情报中心', sub: 'Intelligence', icon: 'feed'  },
   { id: 'actions',  label: '行动建议', sub: 'Actions',      icon: 'check' },
 ]
