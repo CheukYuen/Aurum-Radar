@@ -2,7 +2,7 @@
 
 Each ``*In`` model mirrors a table in backend/architecture.md §8. They are the
 in-memory representation; persistence (SQLAlchemy models under app/models) is a
-separate layer — see the TODO markers in app/services/pipeline.py.
+separate layer.
 """
 from __future__ import annotations
 
@@ -12,12 +12,13 @@ from pydantic import BaseModel, Field
 
 from app.schemas.enums import (
     ActionStatus,
-    Confidence,
+    ConductionChainId,
     CredibilityLevel,
-    EventType,
-    ImpactType,
+    EnvFactorId,
     PipelineStage,
     Priority,
+    SignalDirection,
+    SourceCategory,
     SourceType,
     StageStatus,
 )
@@ -43,29 +44,80 @@ class RawDocumentIn(BaseModel):
     credibility_level: CredibilityLevel | None = None
 
     # --- pipeline-internal, NOT persisted to raw_documents ---
-    candidate_event_type: EventType | None = None
+    candidate_source_category: SourceCategory | None = None
     relevant: bool = True
 
 
-class IntelligenceEventIn(BaseModel):
-    """Mirrors ``intelligence_events`` (architecture.md §8). Output of stages 3-4."""
+class EnvFactorIn(BaseModel):
+    """One environmental impact factor on an intelligence event (preclassify_extract.md §第二坐标轴).
 
+    An event carries 1-3 of these; exactly one has ``is_primary=True``.
+    """
+
+    factor_id: EnvFactorId
+    factor_name: str  # supply_constraint / structure_disruption / ...
+    is_primary: bool = False
+    evidence: str = ""  # 30 字内的触发该判断的原文片段或推理依据
+
+
+class ConductionChainIn(BaseModel):
+    """传导链路定位 (preclassify_extract.md §conduction)."""
+
+    chain_id: ConductionChainId
+    chain_name: str
+    node_position: str | None = None  # 该信号处于链路上的哪一节点
+    lag_estimate: str | None = None   # 时滞估计（短期/中期/长期 + 时间单位）
+
+
+class EntitiesIn(BaseModel):
+    """实体抽取结果. 缺失字段返回空列表而非省略."""
+
+    brands: list[str] = Field(default_factory=list)
+    materials: list[str] = Field(default_factory=list)
+    markets: list[str] = Field(default_factory=list)
+    regulators: list[str] = Field(default_factory=list)
+    locations: list[str] = Field(default_factory=list)
+
+
+class IntelligenceEventIn(BaseModel):
+    """Mirrors ``intelligence_events`` (architecture.md §8). Output of stages 3-4.
+
+    Stage 3 (extraction) fills the source/factor/signal fields; Stage 4 (scoring)
+    fills ``priority / opportunity_score / risk_score``.
+    """
+
+    # --- 基础元数据 ---
     market: str
     region: str | None = None
-    event_type: EventType
     title: str
-    summary: str
-    business_impact: str
-    impact_type: ImpactType
-    priority: Priority
-    confidence: Confidence
+    summary: str | None = None
+    business_impact: str | None = None
+    source_url: str
+    raw_document_id: int | None = None  # FK -> raw_documents.id
+
+    # --- Stage 3: 第一坐标轴 (信息来源) ---
+    source_category: SourceCategory
+
+    # --- Stage 3: 第二坐标轴 (底层环境影响因子) + 传导链路 ---
+    env_factors: list[EnvFactorIn] = Field(default_factory=list)
+    conduction_chain: ConductionChainIn | None = None
+
+    # --- Stage 3: 信号属性 ---
+    signal_direction: SignalDirection = SignalDirection.neutral
+    intensity: int = Field(default=1, ge=1, le=5)
+    impact_scope: list[str] = Field(default_factory=list)
+    entities: EntitiesIn = Field(default_factory=EntitiesIn)
+    key_claim: str = ""              # 纯事实陈述 ≤50 字
+    downstream_implications: list[str] = Field(default_factory=list)  # 1-3 条推断
+    ambiguity_flags: list[str] = Field(default_factory=list)
+    confidence: float = Field(default=0.5, ge=0.0, le=1.0)
+
+    # --- Stage 4: 评分产出 ---
+    priority: Priority = Priority.P2
     opportunity_score: int = Field(default=0, ge=0, le=100)
     risk_score: int = Field(default=0, ge=0, le=100)
-    source_url: str
-    raw_document_id: int | None = None  # FK -> raw_documents.id (linked at score stage)
 
-    # --- carried from the source raw_document for scoring / display ---
-    # (not columns on intelligence_events — joined via raw_document_id)
+    # --- carried from the source raw_document (not persisted as columns) ---
     source_name: str | None = None
     credibility_level: CredibilityLevel | None = None
     published_at: datetime | None = None

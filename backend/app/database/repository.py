@@ -92,24 +92,38 @@ def save_raw_documents(db: Session, docs: list[RawDocumentIn]) -> dict[str, int]
 # --- stages 3-4: intelligence_events ---------------------------------------
 
 def save_events(db: Session, events: list[IntelligenceEventIn]) -> int:
-    """Insert scored intelligence events."""
+    """Insert scored intelligence events (architecture.md §7.3 双坐标轴)."""
     if not events:
         return 0
     models = [
         IntelligenceEvent(
             market=e.market,
             region=e.region,
-            event_type=_val(e.event_type),
             title=e.title,
             summary=e.summary,
             business_impact=e.business_impact,
-            impact_type=_val(e.impact_type),
-            priority=_val(e.priority),
-            confidence=_val(e.confidence),
-            opportunity_score=e.opportunity_score,
-            risk_score=e.risk_score,
             source_url=e.source_url,
             raw_document_id=e.raw_document_id,
+            # --- 第一坐标轴
+            source_category=_val(e.source_category),
+            # --- 第二坐标轴 + 链路
+            env_factors=[f.model_dump(mode="json") for f in (e.env_factors or [])],
+            conduction_chain=(
+                e.conduction_chain.model_dump(mode="json") if e.conduction_chain else None
+            ),
+            # --- 信号属性
+            signal_direction=_val(e.signal_direction),
+            intensity=e.intensity,
+            impact_scope=list(e.impact_scope or []),
+            entities=e.entities.model_dump(mode="json") if e.entities else None,
+            key_claim=e.key_claim or None,
+            downstream_implications=list(e.downstream_implications or []),
+            ambiguity_flags=list(e.ambiguity_flags or []),
+            confidence=e.confidence,
+            # --- Stage 4 评分
+            priority=_val(e.priority),
+            opportunity_score=e.opportunity_score,
+            risk_score=e.risk_score,
             # carried for display but not modelled as columns -> extra
             extra={
                 "source_name": e.source_name,

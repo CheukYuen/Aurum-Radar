@@ -1,6 +1,8 @@
 import { DISTRICT_LAYOUT, MARKET_LAYOUT } from './mapLayout'
 import type {
   ChipTone,
+  ConductionChain,
+  ConductionChainId,
   CountryDetail,
   CountryImpact,
   CountryNode,
@@ -8,12 +10,15 @@ import type {
   DailyBrief,
   Department,
   DeptPriority,
+  EnvFactor,
+  EnvFactorId,
   EventImpact,
   IntelEvent,
   JobsStatus,
   RegionDetail,
   RegionMetric,
   SgRegion,
+  SignalDirection,
   StatusKind,
   StrategyOption,
   StrategyTier,
@@ -21,17 +26,66 @@ import type {
 
 export type {
   BriefAction,
+  ConductionChain,
+  ConductionChainId,
   CountryDetail,
   CountryNode,
   CouncilStrategy,
   DailyBrief,
   Department,
+  EnvFactor,
+  EnvFactorId,
   IntelEvent,
   JobsStatus,
   RegionDetail,
   SgRegion,
+  SignalDirection,
   StrategyOption,
 } from './types'
+
+// ── 影响因子 / 链路 标签与色彩 (architecture.md §7.3) ────────────
+export const ENV_FACTOR_LABEL: Record<EnvFactorId, string> = {
+  F1: '供给约束',
+  F2: '结构重塑',
+  F3: '需求迁移',
+  F4: '制度摩擦',
+  F5: '价格传导',
+  F6: '叙事压力',
+  F7: '渠道博弈',
+}
+
+// 因子 -> chip tone (复用 OverviewPage 的 6 色系)
+export const ENV_FACTOR_TONE: Record<EnvFactorId, ChipTone> = {
+  F1: 'clay',    // 供给约束 — 风险红
+  F2: 'indigo',  // 结构重塑 — 蓝
+  F3: 'sage',    // 需求迁移 — 绿（机会）
+  F4: 'plum',    // 制度摩擦 — 紫
+  F5: 'gold',    // 价格传导 — 金
+  F6: 'plum',    // 叙事压力 — 紫
+  F7: 'bone',    // 渠道博弈 — 米
+}
+
+export const CONDUCTION_CHAIN_LABEL: Record<ConductionChainId, string> = {
+  A: '地缘-供给-成本链',
+  B: '货币-消费-需求链',
+  C: '文化-偏好-结构链',
+  D: '制度-合规-成本链',
+  E: '技术-替代-颠覆链',
+}
+
+export const SIGNAL_DIRECTION_LABEL: Record<SignalDirection, string> = {
+  positive: '正向 · 利好',
+  negative: '负向 · 利空',
+  mixed: '双向 · 复合',
+  neutral: '中性 · 观察',
+}
+
+export const SIGNAL_DIRECTION_TONE: Record<SignalDirection, ChipTone> = {
+  positive: 'sage',
+  negative: 'clay',
+  mixed: 'gold',
+  neutral: 'bone',
+}
 
 const BASE = '/api'
 
@@ -133,16 +187,22 @@ function statusLabel(status: StatusKind): string {
   return labels[status]
 }
 
-function eventTypeLabel(value: unknown): string {
+function sourceCategoryLabel(value: unknown): string {
   const raw = str(value)
+  // source_category (架构 §7.3 第一坐标轴 7 值) -> 中文
+  // legacy event_type 值同表合并，便于历史数据回放
   const map: Record<string, string> = {
     competition: '竞争',
     product: '产品',
-    platform: '平台',
-    social: '社媒',
+    social_media: '社媒',
     regulation: '法规',
-    pricing: '产品',
     channel: '渠道',
+    macro: '宏观',
+    supply_chain: '供应链',
+    // legacy fallbacks
+    platform: '渠道',
+    social: '社媒',
+    pricing: '宏观',
     festival: '产品',
   }
   return map[raw] ?? raw
@@ -160,8 +220,45 @@ function impactKind(value: unknown): EventImpact['kind'] {
   return 'trend'
 }
 
+function isEnvFactorId(value: unknown): value is EnvFactorId {
+  return typeof value === 'string' && /^F[1-7]$/.test(value)
+}
+
+function isChainId(value: unknown): value is ConductionChainId {
+  return typeof value === 'string' && /^[A-E]$/.test(value)
+}
+
+function isSignalDirection(value: unknown): value is SignalDirection {
+  return value === 'positive' || value === 'negative' || value === 'mixed' || value === 'neutral'
+}
+
+function mapEnvFactor(raw: JsonRecord): EnvFactor | null {
+  const fid = raw.factor_id
+  if (!isEnvFactorId(fid)) return null
+  return {
+    factorId: fid,
+    factorName: str(raw.factor_name),
+    label: ENV_FACTOR_LABEL[fid],
+    isPrimary: Boolean(raw.is_primary),
+    evidence: str(raw.evidence),
+  }
+}
+
+function mapConductionChain(raw: unknown): ConductionChain | null {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null
+  const r = raw as JsonRecord
+  const cid = r.chain_id
+  if (!isChainId(cid)) return null
+  return {
+    chainId: cid,
+    chainName: str(r.chain_name, CONDUCTION_CHAIN_LABEL[cid]),
+    nodePosition: str(r.node_position),
+    lagEstimate: str(r.lag_estimate),
+  }
+}
+
 function mapEvent(raw: JsonRecord): IntelEvent {
-  const eventType = raw.event_type ?? raw.cat
+  const sourceCategoryValue = str(raw.source_category ?? raw.event_type ?? raw.cat)
   const sourceName = str(raw.source_name ?? raw.source)
   const sourceUrl = str(raw.source_url)
   const publishedAt = raw.published_at ?? raw.citation_time ?? raw.created_at
@@ -175,14 +272,26 @@ function mapEvent(raw: JsonRecord): IntelEvent {
     : [{
         kind: 'trend',
         title: '业务影响',
-        text: str(raw.business_impact ?? raw.summary),
+        text: str(raw.business_impact ?? raw.key_claim ?? raw.summary),
       }]
+
+  // 双坐标轴新字段 (architecture.md §7.3)
+  const envFactors = list(raw.env_factors)
+    .map(mapEnvFactor)
+    .filter((f): f is EnvFactor => f !== null)
+  const primaryFactor = envFactors.find(f => f.isPrimary) ?? envFactors[0] ?? null
+  const conductionChain = mapConductionChain(raw.conduction_chain)
+  const signalDirection: SignalDirection = isSignalDirection(raw.signal_direction)
+    ? raw.signal_direction
+    : 'neutral'
 
   return {
     id: String(raw.event_id ?? raw.id ?? ''),
-    cat: eventTypeLabel(eventType),
+    sourceCategory: sourceCategoryValue,
+    cat: sourceCategoryLabel(sourceCategoryValue),
     title: str(raw.title),
     summary: str(raw.summary),
+    keyClaim: str(raw.key_claim),
     source: sourceName || hostFromUrl(sourceUrl) || '公开来源',
     srcDetail: str(raw.src_detail) || hostFromUrl(sourceUrl),
     time: str(raw.time) || formatDateTime(publishedAt),
@@ -193,6 +302,17 @@ function mapEvent(raw: JsonRecord): IntelEvent {
     brands: strings(raw.brands).length > 0 ? strings(raw.brands) : [sourceName].filter(Boolean),
     citation: str(raw.citation) || sourceName || sourceUrl,
     citationTime: str(raw.citation_time) || formatFullDateTime(publishedAt),
+    envFactors,
+    primaryFactor,
+    conductionChain,
+    signalDirection,
+    intensity: num(raw.intensity),
+    impactScope: strings(raw.impact_scope),
+    downstreamImplications: strings(raw.downstream_implications),
+    ambiguityFlags: strings(raw.ambiguity_flags),
+    confidence: typeof raw.confidence === 'number' ? raw.confidence : num(raw.confidence),
+    opportunityScore: num(raw.opportunity_score),
+    riskScore: num(raw.risk_score),
   }
 }
 

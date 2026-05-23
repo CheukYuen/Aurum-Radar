@@ -52,9 +52,18 @@ def generate_brief(
 def _top_events(
     events: list[IntelligenceEventIn], limit: int = 20
 ) -> list[IntelligenceEventIn]:
-    """Highlight the strongest signals — ranked by max(opportunity, risk)."""
+    """Highlight the strongest signals — ranked by intensity, then by max(opportunity, risk).
+
+    intensity ≥ 4 events are guaranteed to surface (preclassify_extract.md interface
+    contract: intensity ≥ 4 → 预警队列).
+    """
     return sorted(
-        events, key=lambda e: max(e.opportunity_score, e.risk_score), reverse=True
+        events,
+        key=lambda e: (
+            e.intensity or 0,
+            max(e.opportunity_score or 0, e.risk_score or 0),
+        ),
+        reverse=True,
     )[:limit]
 
 
@@ -68,10 +77,18 @@ def _snapshot_brief(s: MarketSnapshotIn) -> dict:
 
 
 def _event_brief(e: IntelligenceEventIn) -> dict:
+    """Brief payload uses key_claim + downstream_implications as summary material
+    (architecture.md §7.3 接口约定).
+    """
+    primary = next((f for f in e.env_factors if f.is_primary), None)
     return {
         "market": e.market,
-        "event_type": e.event_type.value,
+        "source_category": e.source_category.value,
         "title": e.title,
-        "impact_type": e.impact_type.value,
+        "key_claim": e.key_claim or e.summary,
+        "primary_env_factor": primary.factor_name if primary else None,
+        "signal_direction": e.signal_direction.value,
+        "intensity": e.intensity,
+        "downstream_implications": e.downstream_implications,
         "priority": e.priority.value,
     }
