@@ -3,11 +3,11 @@ import type { CountryNode, StatusKind } from '../../api/types'
 
 const STATUS_COLORS: Record<StatusKind, { fill: string; glow: string; label: string }> = {
   high:        { fill: '#7A9D7E', glow: 'rgba(122,157,126,.35)', label: '机会增强' },
-  mid:         { fill: '#C8A569', glow: 'rgba(200,165,105,.35)', label: '需持续观察' },
+  mid:         { fill: '#C8A569', glow: 'rgba(200,165,105,.35)', label: '' },
   risk:        { fill: '#C97F6E', glow: 'rgba(201,127,110,.35)', label: '风险升温' },
   competition: { fill: '#5B88B0', glow: 'rgba(91,136,176,.35)',  label: '竞争加剧' },
   regulation:  { fill: '#6B7A9E', glow: 'rgba(107,122,158,.35)', label: '法规变化' },
-  watch:       { fill: '#A89776', glow: 'rgba(168,151,118,.3)',  label: '需持续观察' },
+  watch:       { fill: '#A89776', glow: 'rgba(168,151,118,.3)',  label: '' },
 }
 
 function Arc({ from, to, opacity = 0.5 }: { from: { x: number; y: number }; to: { x: number; y: number }; opacity?: number }) {
@@ -37,7 +37,9 @@ function CountryNodeEl({ c, hot, onClick }: { c: CountryNode; hot: boolean; onCl
       <circle cx={c.x - c.size * 0.3} cy={c.y - c.size * 0.3} r={c.size * 0.3} fill="rgba(255,255,255,.5)" />
       <g transform={`translate(${c.x + c.size + 12} ${c.y - 4})`}>
         <text fontFamily="var(--font-serif)" fontSize="20" fontWeight="600" fill="#2A2419">{c.name}</text>
-        <text y="20" fontFamily="var(--font-sans)" fontSize="12" fill={s.fill} fontWeight="600">{s.label}</text>
+        {s.label && (
+          <text y="20" fontFamily="var(--font-sans)" fontSize="12" fill={s.fill} fontWeight="600">{s.label}</text>
+        )}
       </g>
     </g>
   )

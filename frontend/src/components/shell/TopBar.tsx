@@ -162,11 +162,11 @@ function FilterPill({ icon, label, value, subValue, onClick, readOnly, readOnlyT
 
 const STATUS_META: Record<StatusKind, { color: string; label: string }> = {
   high:        { color: '#7A9D7E', label: '机会增强' },
-  mid:         { color: '#C8A569', label: '需持续观察' },
+  mid:         { color: '#C8A569', label: '' },
   risk:        { color: '#C97F6E', label: '风险升温' },
   competition: { color: '#5B88B0', label: '竞争加剧' },
   regulation:  { color: '#6B7A9E', label: '法规变化' },
-  watch:       { color: '#A89776', label: '需持续观察' },
+  watch:       { color: '#A89776', label: '' },
 }
 
 function CountryFilterPill({
@@ -235,17 +235,18 @@ function CountryFilterPill({
           position: 'absolute',
           top: 'calc(100% + 8px)',
           right: 0,
-          width: 280,
-          padding: 8,
+          width: '100%',
+          minWidth: 190,
+          padding: '6px',
           background: 'var(--pearl)',
           border: '1px solid var(--line-strong)',
-          borderRadius: 14,
+          borderRadius: 12,
           boxShadow: 'var(--shadow-lg)',
           zIndex: 30,
         }}>
           <div style={{
-            padding: '6px 10px 8px',
-            fontSize: 10.5,
+            padding: '4px 8px 6px',
+            fontSize: 10,
             letterSpacing: '.08em',
             textTransform: 'uppercase',
             color: 'var(--ink-4)',
@@ -254,9 +255,9 @@ function CountryFilterPill({
             选择国家 / 地区
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 320, overflowY: 'auto' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 2, maxHeight: 280, overflowY: 'auto' }}>
             {countries.length === 0 ? (
-              <div style={{ padding: '12px 10px', fontSize: 12.5, color: 'var(--ink-4)' }}>加载市场中…</div>
+              <div style={{ padding: '10px 8px', fontSize: 12, color: 'var(--ink-4)' }}>加载市场中…</div>
             ) : countries.map(country => {
               const active = country.id === value
               const status = STATUS_META[country.status]
@@ -272,10 +273,10 @@ function CountryFilterPill({
                   style={{
                     display: 'flex',
                     alignItems: 'center',
-                    gap: 10,
+                    gap: 8,
                     width: '100%',
-                    padding: '10px 12px',
-                    borderRadius: 10,
+                    padding: '7px 8px',
+                    borderRadius: 8,
                     border: active ? '1px solid rgba(200,165,105,.45)' : '1px solid transparent',
                     background: active ? 'var(--gold-wash)' : 'transparent',
                     cursor: 'pointer',
@@ -290,24 +291,30 @@ function CountryFilterPill({
                   }}
                 >
                   <span style={{
-                    width: 8,
-                    height: 8,
-                    borderRadius: 8,
+                    width: 6,
+                    height: 6,
+                    borderRadius: 6,
                     background: status.color,
                     boxShadow: `0 0 0 2px rgba(255,252,244,.85), 0 0 0 3px ${status.color}30`,
                     flexShrink: 0,
                   }} />
-                  <span style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--ink-1)' }}>{country.name}</div>
-                    <div style={{ fontSize: 11, color: 'var(--ink-4)', marginTop: 1, fontFamily: 'var(--font-mono)' }}>{country.sub}</div>
-                  </span>
                   <span style={{
-                    fontSize: 10.5,
-                    fontWeight: 700,
-                    color: status.color,
+                    flex: 1,
+                    minWidth: 0,
+                    fontSize: 13,
+                    fontWeight: active ? 600 : 500,
+                    color: 'var(--ink-1)',
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                  }}>{country.name}</span>
+                  <span style={{
+                    fontSize: 10,
+                    color: 'var(--ink-4)',
+                    fontFamily: 'var(--font-mono)',
                     flexShrink: 0,
-                  }}>{status.label}</span>
-                  {active && <Icon name="check" size={14} style={{ color: 'var(--gold-2)', flexShrink: 0 }} />}
+                  }}>{country.sub}</span>
+                  {active && <Icon name="check" size={13} style={{ color: 'var(--gold-2)', flexShrink: 0 }} />}
                 </button>
               )
             })}

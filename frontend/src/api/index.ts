@@ -1,4 +1,4 @@
-import { DISTRICT_LAYOUT, MARKET_LAYOUT } from './mapLayout'
+import { compareMarketDisplayOrder, DISTRICT_LAYOUT, MARKET_LAYOUT } from './mapLayout'
 import type {
   ChipTone,
   ConductionChain,
@@ -275,17 +275,17 @@ function marketStatus(opportunity: number, risk: number): { status: StatusKind; 
   if (risk >= 65 && risk >= opportunity) return { status: 'risk', label: '风险升温', tone: 'clay' }
   if (opportunity >= 70) return { status: 'high', label: '机会增强', tone: 'sage' }
   if (risk >= 50 && risk > opportunity) return { status: 'risk', label: '风险升温', tone: 'clay' }
-  return { status: 'mid', label: '需持续观察', tone: 'bone' }
+  return { status: 'mid', label: '', tone: 'bone' }
 }
 
 function statusLabel(status: StatusKind): string {
   const labels: Record<StatusKind, string> = {
     high: '机会增强',
-    mid: '需持续观察',
+    mid: '',
     risk: '风险升温',
     competition: '竞争加剧',
     regulation: '法规变化',
-    watch: '需持续观察',
+    watch: '',
   }
   return labels[status]
 }
@@ -482,7 +482,7 @@ function mapCountry(raw: JsonRecord): CountryNode {
 
 export async function fetchCountries(): Promise<CountryNode[]> {
   const raw = await get<{ markets: JsonRecord[] }>('/overview')
-  return raw.markets.map(mapCountry)
+  return raw.markets.map(mapCountry).sort((a, b) => compareMarketDisplayOrder(a.id, b.id))
 }
 
 export async function fetchCountryDetail(id: string): Promise<CountryDetail | undefined> {
@@ -775,7 +775,9 @@ export async function fetchLatestBrief(): Promise<DailyBrief> {
         status: statusLabel(country.status),
         desc: country.headline ?? '',
       }))
-    : rawMarkets.map(market => ({ id: market, name: marketName(market), sub: market, status: '需持续观察', desc: '' }))
+    : rawMarkets
+      .map(market => ({ id: market, name: marketName(market), sub: market, status: '', desc: '' }))
+      .sort((a, b) => compareMarketDisplayOrder(a.id, b.id))
 
   return {
     briefDate: str(brief.brief_date),

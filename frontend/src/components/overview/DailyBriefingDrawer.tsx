@@ -52,7 +52,9 @@ function MarketCard({ name, sub, status, desc, delay }: { name: string; sub: str
         <div style={{ fontFamily: 'var(--font-serif)', fontSize: 20, fontWeight: 600, color: 'var(--ink-1)', lineHeight: 1.2 }}>{name}</div>
         <div style={{ fontSize: 10, letterSpacing: '.14em', color: 'var(--ink-4)', textTransform: 'uppercase', marginTop: 2 }}>{sub}</div>
       </div>
-      <span className={`chip ${STATUS_CHIP[status] ?? 'bone'}`} style={{ padding: '4px 12px', fontSize: 12, fontWeight: 700, flexShrink: 0 }}>{status}</span>
+      {status && (
+        <span className={`chip ${STATUS_CHIP[status] ?? 'bone'}`} style={{ padding: '4px 12px', fontSize: 12, fontWeight: 700, flexShrink: 0 }}>{status}</span>
+      )}
       <span style={{ fontSize: 13.5, color: 'var(--ink-2)', lineHeight: 1.5, flex: 1 }}>{desc || '暂无摘要'}</span>
     </div>
   )

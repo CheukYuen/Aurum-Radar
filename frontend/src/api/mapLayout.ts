@@ -49,6 +49,23 @@ export const MARKET_LAYOUT: Record<string, { name: string; x: number; y: number;
   GLOBAL: { name: '全球', x: 800, y: 120, size: 14 },
 }
 
+/** UI display order: 全球 → 美国 → 发达国家 → 新兴市场 */
+export const MARKET_DISPLAY_ORDER: readonly string[] = [
+  'GLOBAL',
+  'US',
+  'JP', 'KR', 'SG',
+  'TH', 'MY', 'ID', 'VN', 'PH',
+]
+
+export function compareMarketDisplayOrder(a: string, b: string): number {
+  const ia = MARKET_DISPLAY_ORDER.indexOf(a)
+  const ib = MARKET_DISPLAY_ORDER.indexOf(b)
+  const rankA = ia === -1 ? MARKET_DISPLAY_ORDER.length + 1 : ia
+  const rankB = ib === -1 ? MARKET_DISPLAY_ORDER.length + 1 : ib
+  if (rankA !== rankB) return rankA - rankB
+  return a.localeCompare(b)
+}
+
 export const DISTRICT_LAYOUT: Record<string, { x: number; y: number; sub: string }> = {
   orchard: { x: 540, y: 340, sub: 'Orchard' },
   marina: { x: 700, y: 425, sub: 'Marina Bay' },

@@ -71,7 +71,7 @@ export default function CountryPanel({ detail, onJumpToMap }: CountryPanelProps)
         <div>
           <div className="flex items-center gap-3">
             <h2 style={{ margin: 0, fontFamily: 'var(--font-serif)', fontSize: 28, fontWeight: 600 }}>{d.name}</h2>
-            <span className={`chip ${d.statusKind}`}>{d.status}</span>
+            {d.status && <span className={`chip ${d.statusKind}`}>{d.status}</span>}
           </div>
           <div style={{ fontSize: 11, letterSpacing: '.18em', color: 'var(--ink-3)', marginTop: 4, textTransform: 'uppercase' }}>
             {d.sub} · Market Judgment

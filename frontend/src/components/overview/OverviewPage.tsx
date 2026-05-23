@@ -55,24 +55,6 @@ function AiRadarStrip({ summary }: { summary: DashboardSummary | null }) {
           </div>
         ))}
       </div>
-
-      {/* Timestamp + window chip */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, paddingLeft: 16, borderLeft: '1px solid var(--line-strong)', flexShrink: 0 }}>
-        <div style={{
-          padding: '3px 9px', borderRadius: 999,
-          background: 'var(--gold-tint)', border: '1px solid rgba(200,165,105,.35)',
-          fontSize: 10.5, fontWeight: 700, color: 'var(--gold-2)',
-          letterSpacing: '.04em', whiteSpace: 'nowrap',
-        }}>
-          近 {summary?.window_days ?? 30} 天
-        </div>
-        <div style={{ textAlign: 'right' }}>
-          <div style={{ fontSize: 10.5, color: 'var(--ink-4)', letterSpacing: '.04em' }}>最近更新</div>
-          <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--ink-2)', fontFamily: 'var(--font-mono)' }}>
-            {summary?.as_of ? new Date(summary.as_of).toLocaleString('zh-CN', { hour12: false }) : '—'}
-          </div>
-        </div>
-      </div>
     </div>
   )
 }
@@ -134,7 +116,6 @@ export default function OverviewPage({
             <Legend dot="#5B88B0" label="竞争加剧" />
             <Legend dot="#C97F6E" label="风险升温" />
             <Legend dot="#6B7A9E" label="法规变化" />
-            <Legend dot="#A89776" label="需持续观察" />
           </div>
         </div>
         <div style={{ position: 'relative', borderRadius: 12, overflow: 'hidden', border: '1px solid var(--line-soft)', background: 'linear-gradient(135deg, var(--pearl-warm), var(--ivory))' }}>
