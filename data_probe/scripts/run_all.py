@@ -2,8 +2,8 @@
 
 Modes:
   (default)         Run SG-market probes only (news/competitors/...)
-  --global          Append the 5 global intelligence probes
-  --include reddit,trends,baidu   Add opt-in probes (need creds/libs)
+  --global          Append the 4 global intelligence probes
+  --include reddit,trends   Add opt-in probes (need creds/libs)
 """
 from __future__ import annotations
 
@@ -27,17 +27,15 @@ LOCAL_PROBES = [
 ]
 
 GLOBAL_PROBES = [
-    ("gdelt",                   "probe_gdelt",             "probe_gdelt"),
-    ("global_news",             "probe_global_news",       "probe_global_news"),
-    ("federal_register",        "probe_federal_register",  "probe_federal_register"),
-    ("ecommerce_announcements", "probe_ecommerce",         "probe_ecommerce"),
-    ("tavily",                  "probe_tavily",            "probe_tavily"),
+    ("gdelt",            "probe_gdelt",            "probe_gdelt"),
+    ("global_news",      "probe_global_news",      "probe_global_news"),
+    ("federal_register", "probe_federal_register", "probe_federal_register"),
+    ("tavily",           "probe_tavily",           "probe_tavily"),
 ]
 
 OPTIONAL_PROBES = {
-    "reddit": ("reddit", "probe_reddit", "probe_reddit"),
-    "trends": ("google_trends", "probe_trends", "probe_trends"),
-    "baidu": ("baidu_index", "probe_baidu_index", "probe_baidu_index"),
+    "reddit": ("reddit",        "probe_reddit",  "probe_reddit"),
+    "trends": ("google_trends", "probe_trends",  "probe_trends"),
 }
 
 
@@ -78,7 +76,7 @@ def main() -> None:
     parser.add_argument("--global", dest="run_global", action="store_true",
                         help="Append the 5 global intelligence probes (PRD 爬虫2)")
     parser.add_argument("--include", default="",
-                        help="Comma-separated opt-in probes: reddit,trends,baidu")
+                        help="Comma-separated opt-in probes: reddit,trends")
     parser.add_argument("--only-global", action="store_true",
                         help="Run only the global probes (skip the SG MVP probes)")
     args = parser.parse_args()

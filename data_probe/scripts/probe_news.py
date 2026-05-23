@@ -14,12 +14,10 @@ sys.path.insert(0, str(Path(__file__).parent))
 import feedparser
 from utils import (
     extract_links_by_keywords,
-    fetch_article_text,
     fetch_html,
     load_sources,
     make_record,
     parse_page_title,
-    resolve_article_url,
     save_outputs,
 )
 
@@ -28,11 +26,8 @@ NEWS_KEYWORDS = ["gold", "jewellery", "jewelry", "luxury", "collection",
 
 MAX_ENTRIES_PER_FEED = 20
 
-# 抓取正文最多处理前 N 篇（DDG 请求有速率限制，避免过快）
-MAX_FULLTEXT_PER_FEED = 3
 
-
-def _probe_rss(src: dict, fetch_fulltext: bool = False) -> tuple[dict, list[dict]]:
+def _probe_rss(src: dict) -> tuple[dict, list[dict]]:
     name = src["name"]
     market = src["market"]
     url = src["url"]
@@ -47,7 +42,6 @@ def _probe_rss(src: dict, fetch_fulltext: bool = False) -> tuple[dict, list[dict
     entries = feed.entries[:MAX_ENTRIES_PER_FEED]
     raw_entries = []
     normalized = []
-    fulltext_count = 0
 
     for e in entries:
         title = e.get("title", "")
@@ -57,46 +51,19 @@ def _probe_rss(src: dict, fetch_fulltext: bool = False) -> tuple[dict, list[dict
 
         src_obj = e.get("source", {})
         source_name = src_obj.get("title", name) if isinstance(src_obj, dict) else name
-        source_domain = ""
-        if isinstance(src_obj, dict):
-            raw_domain = src_obj.get("href", "")
-            if raw_domain:
-                from urllib.parse import urlparse
-                source_domain = urlparse(raw_domain).netloc  # e.g. www.channelnewsasia.com
-
-        # 尝试抓正文（仅前 MAX_FULLTEXT_PER_FEED 篇且来源域名已知）
-        fulltext = None
-        real_url = None
-        if fetch_fulltext and source_domain and fulltext_count < MAX_FULLTEXT_PER_FEED:
-            clean_title = title.split(" - ")[0].strip()
-            real_url = resolve_article_url(clean_title, source_domain)
-            if real_url:
-                fulltext = fetch_article_text(real_url)
-                fulltext_count += 1
-                status_tag = "✓" if fulltext else "url_found"
-                print(f"      [{status_tag}] {source_name}: {real_url[:70]}")
-            else:
-                print(f"      [url_not_found] {source_name}: {clean_title[:50]}")
 
         raw_entries.append({
             "title": title,
-            "url": real_url or link,
-            "gn_url": link,
+            "url": link,
             "published": published,
             "source": source_name,
-            "fulltext_chars": len(fulltext) if fulltext else 0,
         })
         normalized.append(make_record(
-            "news", market, name, real_url or link,
+            "news", market, name, link,
             title=title,
-            summary=fulltext[:500] if fulltext else (summary[:300] if summary else None),
+            summary=summary[:300] if summary else None,
             published_at=published,
-            extra={
-                "media_source": source_name,
-                "gn_url": link,
-                "fulltext": fulltext,
-                "source_domain": source_domain,
-            },
+            extra={"media_source": source_name},
         ))
 
     raw = {"source": src, "entry_count": len(entries), "entries": raw_entries}
@@ -126,7 +93,7 @@ def _probe_html(src: dict) -> tuple[dict, list[dict]]:
     return raw, recs
 
 
-def probe_news(fetch_fulltext: bool = False) -> list[dict]:
+def probe_news() -> list[dict]:
     sources = load_sources().get("news", [])
     raw_all, normalized = [], []
 
@@ -136,7 +103,7 @@ def probe_news(fetch_fulltext: bool = False) -> list[dict]:
         print(f"  → [{method.upper()}] {name}")
 
         if method == "rss":
-            raw, recs = _probe_rss(src, fetch_fulltext=fetch_fulltext)
+            raw, recs = _probe_rss(src)
         else:
             raw, recs = _probe_html(src)
 
@@ -153,15 +120,7 @@ def probe_news(fetch_fulltext: bool = False) -> list[dict]:
 
 
 if __name__ == "__main__":
-    import argparse
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--fulltext", action="store_true",
-                        help=f"Resolve real URLs via DuckDuckGo and fetch article text (first {MAX_FULLTEXT_PER_FEED} per feed)")
-    args = parser.parse_args()
-
     print("=== probe_news ===")
-    if args.fulltext:
-        print(f"  [fulltext mode] resolving URLs + fetching content (max {MAX_FULLTEXT_PER_FEED}/feed)")
-    results = probe_news(fetch_fulltext=args.fulltext)
+    results = probe_news()
     ok = sum(1 for r in results if r["status"] == "success")
     print(f"Done: {ok}/{len(results)} success")
