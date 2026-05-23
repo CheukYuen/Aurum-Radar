@@ -1,22 +1,43 @@
-"""Run all probes sequentially and emit a summary report."""
+"""Run probes sequentially and emit a summary report.
+
+Modes:
+  (default)         Run SG-market probes only (news/competitors/...)
+  --global          Append the 5 global intelligence probes
+  --include reddit,trends   Add opt-in probes (need creds/libs)
+"""
+from __future__ import annotations
+
+import argparse
 import json
 import sys
 import traceback
-from datetime import datetime, timezone
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 
-from utils import ROOT, now_iso, timestamp_slug
+from utils import ROOT, now_iso, timestamp_slug  # noqa: E402
 
-PROBES = [
-    ("news",            "probe_news",            "probe_news"),
+LOCAL_PROBES = [
+    ("news",            "probe_news",             "probe_news"),
     ("competitor",      "probe_competitors",      "probe_competitors"),
     ("platform_policy", "probe_platform_policy",  "probe_platform_policy"),
     ("regulation",      "probe_regulations",      "probe_regulations"),
     ("market_data",     "probe_market_data",      "probe_market_data"),
     ("mall",            "probe_malls",            "probe_malls"),
 ]
+
+GLOBAL_PROBES = [
+    ("gdelt",                   "probe_gdelt",             "probe_gdelt"),
+    ("global_news",             "probe_global_news",       "probe_global_news"),
+    ("federal_register",        "probe_federal_register",  "probe_federal_register"),
+    ("ecommerce_announcements", "probe_ecommerce",         "probe_ecommerce"),
+    ("tavily",                  "probe_tavily",            "probe_tavily"),
+]
+
+OPTIONAL_PROBES = {
+    "reddit": ("reddit", "probe_reddit", "probe_reddit"),
+    "trends": ("google_trends", "probe_trends", "probe_trends"),
+}
 
 
 def run_probe(module_name: str, fn_name: str) -> list[dict]:
@@ -31,13 +52,15 @@ def build_summary(all_results: dict[str, list[dict]]) -> dict:
     by_type = {}
 
     for source_type, records in all_results.items():
-        s = sum(1 for r in records if r["status"] == "success")
-        f = sum(1 for r in records if r["status"] == "failed")
-        k = sum(1 for r in records if r["status"] == "skipped")
+        s = sum(1 for r in records if r.get("status") == "success" or (not r.get("status") and not (r.get("title") or "").startswith("[failed")))
+        f = sum(1 for r in records if r.get("status") == "failed" or (r.get("title") or "").startswith("[failed"))
+        k = sum(1 for r in records if r.get("status") == "skipped")
         total += s + f + k
         failed += f
         skipped += k
-        by_type[source_type] = {"success": s, "failed": f, "skipped": k}
+        by_type[source_type] = {
+            "success": s, "failed": f, "skipped": k, "total": len(records),
+        }
 
     return {
         "run_at": now_iso(),
@@ -50,15 +73,36 @@ def build_summary(all_results: dict[str, list[dict]]) -> dict:
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--global", dest="run_global", action="store_true",
+                        help="Append the 5 global intelligence probes (PRD 爬虫2)")
+    parser.add_argument("--include", default="",
+                        help="Comma-separated opt-in probes: reddit,trends")
+    parser.add_argument("--only-global", action="store_true",
+                        help="Run only the global probes (skip the SG MVP probes)")
+    args = parser.parse_args()
+
+    probes = []
+    if not args.only_global:
+        probes.extend(LOCAL_PROBES)
+    if args.run_global or args.only_global:
+        probes.extend(GLOBAL_PROBES)
+    for inc in [x.strip() for x in args.include.split(",") if x.strip()]:
+        if inc in OPTIONAL_PROBES:
+            probes.append(OPTIONAL_PROBES[inc])
+        else:
+            print(f"  [warn] unknown --include option: {inc}")
+
     print("=" * 60)
     print("Aurum Radar — Data Probe Run")
     print(f"Started: {now_iso()}")
+    print(f"Probes : {[p[0] for p in probes]}")
     print("=" * 60)
 
     all_results: dict[str, list[dict]] = {}
     errors: dict[str, str] = {}
 
-    for source_type, module_name, fn_name in PROBES:
+    for source_type, module_name, fn_name in probes:
         print(f"\n[{source_type.upper()}]")
         try:
             records = run_probe(module_name, fn_name)
@@ -87,7 +131,7 @@ def main() -> None:
     print(f"  Skipped       : {summary['skipped_count']}")
     print()
     for stype, counts in summary["by_source_type"].items():
-        print(f"  {stype:<20} success={counts['success']}  failed={counts['failed']}  skipped={counts['skipped']}")
+        print(f"  {stype:<28} success={counts['success']:<4} failed={counts['failed']:<3} skipped={counts['skipped']}")
     print(f"\nSummary saved → {summary_path.relative_to(ROOT)}")
     print("=" * 60)
 
