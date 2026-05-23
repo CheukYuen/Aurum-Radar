@@ -101,19 +101,19 @@ def get_dashboard_summary(db: Session = Depends(get_db)):
     judgments_generated = db.query(func.count(MarketSnapshot.id)).scalar() or 0
     opportunities = (
         db.query(func.count(IntelligenceEvent.id))
-        .filter(IntelligenceEvent.impact_type == "opportunity")
+        .filter(IntelligenceEvent.signal_direction == "positive")
         .scalar()
         or 0
     )
     competition = (
         db.query(func.count(IntelligenceEvent.id))
-        .filter(IntelligenceEvent.event_type == "competition")
+        .filter(IntelligenceEvent.source_category == "competition")
         .scalar()
         or 0
     )
     regulation = (
         db.query(func.count(IntelligenceEvent.id))
-        .filter(IntelligenceEvent.event_type == "regulation")
+        .filter(IntelligenceEvent.source_category == "regulation")
         .scalar()
         or 0
     )

@@ -6,8 +6,8 @@ app/database/init_db.py can create all tables.
 Decoupling design (the schema is expected to evolve — fields added / removed):
   * Almost every column is nullable; only the primary key and the created_at /
     updated_at timestamps are NOT NULL. A partial row is always insertable.
-  * Enum-like values (event_type, priority, credibility_level, ...) are stored
-    as plain strings, NOT database ENUM types — adding a value needs no
+  * Enum-like values (source_category, priority, credibility_level, ...) are
+    stored as plain strings, NOT database ENUM types — adding a value needs no
     ``ALTER TYPE``. Validation lives in the Pydantic layer (app/schemas).
   * Cross-table references (raw_document_id, event_id) are plain integer
     "soft references" with NO hard ForeignKey constraint, so each table can be

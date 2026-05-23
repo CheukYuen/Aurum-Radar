@@ -100,11 +100,36 @@ export interface EventImpact {
   text: string
 }
 
+// 第二坐标轴 — 底层环境影响因子 (architecture.md §7.3, F1-F7)
+export type EnvFactorId = 'F1' | 'F2' | 'F3' | 'F4' | 'F5' | 'F6' | 'F7'
+
+export interface EnvFactor {
+  factorId: EnvFactorId
+  factorName: string   // structure_disruption / supply_constraint / ...
+  label: string        // 中文标签：结构重塑 / 供给约束 / ...
+  isPrimary: boolean
+  evidence: string
+}
+
+// 传导链路 A-E
+export type ConductionChainId = 'A' | 'B' | 'C' | 'D' | 'E'
+
+export interface ConductionChain {
+  chainId: ConductionChainId
+  chainName: string       // 地缘-供给-成本链 / ...
+  nodePosition: string    // 信号在链路上的位置
+  lagEstimate: string     // 短期/中期/长期
+}
+
+export type SignalDirection = 'positive' | 'negative' | 'mixed' | 'neutral'
+
 export interface IntelEvent {
   id: string
-  cat: string
+  cat: string              // 来源轴中文标签 (向后兼容)
+  sourceCategory: string   // 来源轴枚举值 (competition / product / ...)
   title: string
   summary: string
+  keyClaim: string         // 纯事实陈述 ≤50 字
   source: string
   srcDetail: string
   time: string
@@ -115,6 +140,18 @@ export interface IntelEvent {
   brands: string[]
   citation: string
   citationTime: string
+  // 新维度 (architecture.md §7.3 双坐标轴抽取产出)
+  envFactors: EnvFactor[]
+  primaryFactor: EnvFactor | null
+  conductionChain: ConductionChain | null
+  signalDirection: SignalDirection
+  intensity: number              // 1-5
+  impactScope: string[]          // category_*/market_*/brand/retailer/...
+  downstreamImplications: string[]
+  ambiguityFlags: string[]
+  confidence: number             // 0-1
+  opportunityScore: number
+  riskScore: number
 }
 
 // ── Actions types ───────────────────────────────────────────────

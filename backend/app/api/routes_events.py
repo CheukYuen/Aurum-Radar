@@ -4,6 +4,8 @@ from datetime import datetime
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy import cast
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Session
 
 from app.database.session import get_db
@@ -11,31 +13,43 @@ from app.models import IntelligenceEvent, RawDocument
 
 router = APIRouter()
 
-CATEGORY_TO_EVENT_TYPE = {
+# UI category zh -> source_category enum value (architecture.md §7.3 双坐标轴).
+# Maintains the legacy 中文筛选项，让前端不用大改即可继续按渠道筛。
+CATEGORY_TO_SOURCE_CATEGORY = {
     "竞争": "competition",
     "产品": "product",
-    "平台": "platform",
-    "社媒": "social",
+    "平台": "channel",
+    "社媒": "social_media",
     "法规": "regulation",
     "渠道": "channel",
+    "宏观": "macro",
+    "供应链": "supply_chain",
 }
 
-EVENT_TYPE_TO_CATEGORY = {v: k for k, v in CATEGORY_TO_EVENT_TYPE.items()}
-EVENT_TYPE_TO_CATEGORY.update({"pricing": "产品", "festival": "产品"})
+SOURCE_CATEGORY_TO_CATEGORY = {v: k for k, v in CATEGORY_TO_SOURCE_CATEGORY.items()}
 
 
 def _iso(value: datetime | None) -> str | None:
     return value.isoformat() if value else None
 
 
-def _event_type_from_category(category: str | None) -> str | None:
+def _source_category_from_category(category: str | None) -> str | None:
     if not category or category == "全部":
         return None
-    return CATEGORY_TO_EVENT_TYPE.get(category, category)
+    return CATEGORY_TO_SOURCE_CATEGORY.get(category, category)
 
 
 def _priority_to_ui(priority: str | None) -> str:
     return "high" if priority in {"P0", "P1", "high"} else "mid"
+
+
+def _primary_env_factor(env_factors: list | None) -> dict | None:
+    if not env_factors:
+        return None
+    for f in env_factors:
+        if isinstance(f, dict) and f.get("is_primary"):
+            return f
+    return env_factors[0] if isinstance(env_factors[0], dict) else None
 
 
 def _serialize_event(event: IntelligenceEvent, raw: RawDocument | None = None) -> dict:
@@ -49,19 +63,29 @@ def _serialize_event(event: IntelligenceEvent, raw: RawDocument | None = None) -
         or _iso(raw.published_at if raw else None)
         or _iso(event.created_at)
     )
-    category = EVENT_TYPE_TO_CATEGORY.get(event.event_type or "", event.event_type or "")
+    source_category = event.source_category or ""
+    category_label = SOURCE_CATEGORY_TO_CATEGORY.get(source_category, source_category)
+    primary = _primary_env_factor(event.env_factors)
     return {
-        # architecture.md §6.3 fields
+        # architecture.md §6.3 fields — 双坐标轴
         "event_id": event.id,
         "market": event.market,
         "region": event.region,
-        "event_type": event.event_type,
+        "source_category": source_category,
+        "env_factors": event.env_factors or [],
+        "conduction_chain": event.conduction_chain,
+        "signal_direction": event.signal_direction,
+        "intensity": event.intensity,
+        "impact_scope": event.impact_scope or [],
+        "entities": event.entities or {},
+        "key_claim": event.key_claim,
+        "downstream_implications": event.downstream_implications or [],
+        "ambiguity_flags": event.ambiguity_flags or [],
+        "confidence": float(event.confidence) if event.confidence is not None else None,
         "title": event.title,
         "summary": event.summary,
         "business_impact": event.business_impact,
-        "impact_type": event.impact_type,
         "priority": event.priority,
-        "confidence": event.confidence,
         "opportunity_score": event.opportunity_score,
         "risk_score": event.risk_score,
         "source_url": event.source_url,
@@ -69,7 +93,8 @@ def _serialize_event(event: IntelligenceEvent, raw: RawDocument | None = None) -
         "created_at": _iso(event.created_at),
         "updated_at": _iso(event.updated_at),
         # compatibility fields for the current React view model
-        "cat": category,
+        "cat": category_label,
+        "primary_env_factor": primary,
         "source_name": source_name,
         "source": source_name,
         "src_detail": event.source_url,
@@ -78,7 +103,7 @@ def _serialize_event(event: IntelligenceEvent, raw: RawDocument | None = None) -
             {
                 "kind": "trend",
                 "title": "业务影响",
-                "text": event.business_impact or event.summary or "",
+                "text": event.business_impact or event.key_claim or event.summary or "",
             }
         ],
         "markets": [event.market] if event.market else [],
@@ -92,11 +117,19 @@ def _serialize_event(event: IntelligenceEvent, raw: RawDocument | None = None) -
 
 @router.get("/events")
 def list_events(
-    category: Optional[str] = Query(None),
+    category: Optional[str] = Query(None, description="中文渠道筛选 (兼容)"),
     market: Optional[str] = Query(None),
-    event_type: Optional[str] = Query(None),
+    source_category: Optional[str] = Query(
+        None, description="信息来源轴: competition/product/social_media/regulation/channel/macro/supply_chain"
+    ),
+    env_factor: Optional[str] = Query(
+        None, description="底层影响因子: F1-F7 (匹配 env_factors[*].factor_id)"
+    ),
+    signal_direction: Optional[str] = Query(
+        None, description="信号方向: positive/negative/mixed/neutral"
+    ),
     priority: Optional[str] = Query(None),
-    impact_type: Optional[str] = Query(None),
+    min_intensity: Optional[int] = Query(None, ge=1, le=5),
     page: int = Query(1, ge=1),
     size: int = Query(20, ge=1, le=100),
     db: Session = Depends(get_db),
@@ -107,13 +140,22 @@ def list_events(
     )
     if market:
         q = q.filter(IntelligenceEvent.market == market)
-    resolved_event_type = event_type or _event_type_from_category(category)
-    if resolved_event_type:
-        q = q.filter(IntelligenceEvent.event_type == resolved_event_type)
+    resolved_source_category = source_category or _source_category_from_category(category)
+    if resolved_source_category:
+        q = q.filter(IntelligenceEvent.source_category == resolved_source_category)
     if priority:
         q = q.filter(IntelligenceEvent.priority == priority)
-    if impact_type:
-        q = q.filter(IntelligenceEvent.impact_type == impact_type)
+    if signal_direction:
+        q = q.filter(IntelligenceEvent.signal_direction == signal_direction)
+    if min_intensity is not None:
+        q = q.filter(IntelligenceEvent.intensity >= min_intensity)
+    if env_factor:
+        # JSONB contains: env_factors @> [{"factor_id": "F2"}]
+        q = q.filter(
+            IntelligenceEvent.env_factors.contains(
+                cast([{"factor_id": env_factor}], JSONB)
+            )
+        )
 
     total = q.count()
     rows = (

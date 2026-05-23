@@ -67,12 +67,28 @@ def _aggregate_scores(events: list[IntelligenceEventIn]) -> tuple[int, int]:
 
 
 def _event_brief(e: IntelligenceEventIn) -> dict:
+    """Per-event payload sent to the LLM. Uses Stage 3 双坐标轴 fields so the
+    forecaster reasons over impact mechanisms (env_factors / conduction_chain),
+    not just channel labels (architecture.md §7.3 接口约定).
+    """
+    primary = next((f for f in e.env_factors if f.is_primary), None)
     return {
-        "event_type": e.event_type.value,
+        "source_category": e.source_category.value,
         "title": e.title,
-        "summary": e.summary,
+        "key_claim": e.key_claim or e.summary,
         "business_impact": e.business_impact,
-        "impact_type": e.impact_type.value,
+        # 第二坐标轴 — 让 LLM 按作用机制而非渠道聚类
+        "primary_env_factor": {
+            "factor_id": primary.factor_id.value,
+            "factor_name": primary.factor_name,
+            "evidence": primary.evidence,
+        } if primary else None,
+        "conduction_chain": e.conduction_chain.model_dump() if e.conduction_chain else None,
+        "signal_direction": e.signal_direction.value,
+        "intensity": e.intensity,
+        "impact_scope": e.impact_scope,
+        "entities": e.entities.model_dump() if e.entities else {},
+        "downstream_implications": e.downstream_implications,
         "priority": e.priority.value,
         "opportunity_score": e.opportunity_score,
         "risk_score": e.risk_score,

@@ -5,7 +5,7 @@ import Icon from '../ui/Icon'
 import { fetchEvents, fetchDashboardSummary } from '../../api'
 import type { DashboardSummary, IntelEvent } from '../../api'
 
-const TABS = ['全部', '竞争', '产品', '社媒', '法规', '渠道']
+const TABS = ['全部', '竞争', '产品', '社媒', '法规', '渠道', '宏观', '供应链']
 
 function StatCard({ icon, label, value, unit, delta, deltaKind = 'sage', sub }: {
   icon: string; label: string; value: string; unit: string;

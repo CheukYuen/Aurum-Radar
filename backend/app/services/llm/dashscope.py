@@ -84,7 +84,7 @@ class DashScopeLLM:
             model or settings.DASHSCOPE_MODEL_SUMMARY, system, user, temperature
         )
 
-    # ---- stage 3: event extraction ----------------------------------------
+    # ---- stage 3: event extraction (双坐标轴 + 底层影响因子) ---------------
     def extract_event(
         self,
         *,
@@ -92,35 +92,94 @@ class DashScopeLLM:
         body: str,
         market: str,
         source_name: str,
-        candidate_event_type: str | None,
+        published_at: str | None = None,
+        candidate_source_category: str | None,
+        candidate_env_factors: list[str] | None = None,
     ) -> dict:
-        """Extract one structured event from a document. architecture.md §12."""
-        # TODO: tune this prompt against real extraction quality.
+        """Stage 3 双坐标轴抽取 (architecture.md §7.3 / preclassify_extract.md).
+
+        Output contract: source_category + env_factors + conduction_chain +
+        signal_direction + intensity + impact_scope + entities + key_claim +
+        downstream_implications + confidence + ambiguity_flags.
+        """
         system = (
-            "你是周大福海外市场战略情报分析师。从给定的公开信息中抽取一条结构化"
-            "市场事件，严格输出 JSON。判断重点：这条信息对周大福珠宝业务"
-            "意味着什么（机会 / 风险 / 需关注）。"
+            "你是一名专注于珠宝行业的市场情报分析师，具备产业经济学、消费行为学和地缘"
+            "政治分析背景。你的任务是对输入的原始信息执行「预分类 + 结构化抽取」，输出"
+            "可直接入库的标准化 JSON。\n\n"
+            "## 分析框架\n\n"
+            "### 第一坐标轴：source_category（信息来源）\n"
+            "competition / product / social_media / regulation / channel / macro / supply_chain\n\n"
+            "### 第二坐标轴：env_factors（底层环境影响因子，1-3 个，按主次排序）\n"
+            "F1 supply_constraint     供给约束 — 上游 → 原料成本 → 品牌毛利\n"
+            "F2 structure_disruption  结构重塑 — 横向 → 市场份额再分配 → 竞争壁垒重建\n"
+            "F3 demand_shift          需求迁移 — 需求侧 → 品类结构 → 定价权归属\n"
+            "F4 regulatory_friction   制度摩擦 — 外部制度 → 合规成本 → 供应链重组\n"
+            "F5 price_conduction      价格传导 — 宏观变量 → 原料/进出口成本 → 终端定价\n"
+            "F6 narrative_pressure    叙事压力 — 认知层 → 溢价能力 → 消费者信任\n"
+            "F7 channel_power_shift   渠道博弈 — 中间层结构 → 利润分配 → 品牌触达效率\n\n"
+            "### 传导链路 conduction_chain（A-E，无法归类填 null）\n"
+            "A 地缘-供给-成本链 / B 货币-消费-需求链 / C 文化-偏好-结构链 / "
+            "D 制度-合规-成本链 / E 技术-替代-颠覆链\n\n"
+            "### 信号属性\n"
+            "signal_direction: positive / negative / mixed / neutral\n"
+            "intensity: 1-5 (1 微弱背景噪音 → 5 可能引发结构变化)\n"
+            "impact_scope: raw_material / brand / retailer / consumer / "
+            "category_natdiamond / category_labdiamond / category_gold / "
+            "category_gemstone / market_CN / market_US / market_IN / market_GLOBAL …\n"
+            "confidence: 0.0-1.0 浮点（权威来源 0.9+ / 可信媒体 0.7-0.9 / "
+            "社媒匿名 0.5-0.7 / 残缺来源 0.3-0.5）\n\n"
+            "## 处理规则\n"
+            "1. 即使输入文本很短（如标题），也必须完成所有字段；不确定的字段填 null。\n"
+            "2. env_factors 主因子（is_primary: true）只能一个，次要因子 0-2 个。\n"
+            "3. key_claim 必须是纯事实陈述，去掉「可能/或许/据悉」，不超过 50 字。\n"
+            "4. downstream_implications 是推断，1-3 条，按影响概率从高到低。\n"
+            "5. 不要把黄金价格上涨简单等同于利好，区分投资金条 / 饰品金 / 婚庆金 / 悦己消费。\n"
+            "6. 区分情报 sentiment（来源情绪）与对珠宝业务的 impact（影响方向）。\n"
+            "7. ambiguity_flags 可选：multi_factor_conflict / scope_unclear / "
+            "timing_uncertain / source_unverified / entity_ambiguous。\n"
+            "8. 严格输出单个 JSON 对象，不含 markdown 代码块标记或前后缀文字。"
         )
-        user = f"""市场：{market}
-来源：{source_name}
-候选事件类型（仅供参考，可修正）：{candidate_event_type or "未知"}
+        factors_hint = ", ".join(candidate_env_factors or []) or "未知"
+        user = f"""请对以下珠宝行业信息执行预分类和结构化抽取。
+
+【原始文本】
 标题：{title}
 正文：{body or "（无正文，仅标题可用）"}
 
-判级标准（务必遵守，不要滥用 P0）：
-- priority：P0 仅限重大法规变化 / 重大负面舆情 / 平台重大政策，需 24-48 小时内跟进；
-  竞品动作、产品趋势、节庆与渠道机会一律用 P1；信号弱或单一来源用 P2。
-- confidence：取决于来源权威性与信息明确度，多源印证才给 high，单一来源最多 medium。
+【元数据】
+- 市场：{market}
+- 采集时间：{published_at or "未知"}
+- 来源平台：{source_name}
+- 前序来源标签（人工初判，可覆盖）：{candidate_source_category or "未知"}
+- 候选因子（关键词初判，可覆盖）：{factors_hint}
 
-请输出 JSON，字段如下：
+输出 JSON：
 {{
-  "event_type": "competition|product|platform|social|regulation|pricing|channel|festival",
+  "source_category": "competition|product|social_media|regulation|channel|macro|supply_chain",
   "title": "简洁的中文事件标题",
   "summary": "2-3 句中文事件摘要",
-  "business_impact": "对周大福的业务影响判断（这意味着什么）",
-  "impact_type": "opportunity|risk|watch",
-  "priority": "P0|P1|P2",
-  "confidence": "high|medium|low"
+  "business_impact": "对周大福的业务影响判断（这意味着什么，可空）",
+  "env_factors": [
+    {{ "factor_id": "F2", "factor_name": "structure_disruption",
+       "is_primary": true,
+       "evidence": "触发该判断的原文片段或推理依据（30 字内）" }}
+  ],
+  "conduction_chain": {{
+    "chain_id": "A|B|C|D|E",
+    "chain_name": "传导链路中文名",
+    "node_position": "该信号在链路上的位置（节点）",
+    "lag_estimate": "短期(周级)|中期(月级)|长期(季度级)"
+  }},
+  "signal_direction": "positive|negative|mixed|neutral",
+  "intensity": 1,
+  "impact_scope": ["brand", "category_gold", "market_GLOBAL"],
+  "entities": {{
+    "brands": [], "materials": [], "markets": [], "regulators": [], "locations": []
+  }},
+  "key_claim": "纯事实陈述，≤50 字，不含「可能/或许/据悉」等不确定词",
+  "downstream_implications": ["推断 1", "推断 2"],
+  "confidence": 0.85,
+  "ambiguity_flags": []
 }}"""
         return self._chat_json(settings.DASHSCOPE_MODEL_EXTRACT, system, user, 0.3)
 
