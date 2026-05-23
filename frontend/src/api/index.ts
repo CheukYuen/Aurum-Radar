@@ -87,6 +87,42 @@ export const SIGNAL_DIRECTION_TONE: Record<SignalDirection, ChipTone> = {
   neutral: 'bone',
 }
 
+// ── 行动 strategic_option / category 中文映射 (architecture.md §17.7) ────
+export const ACTION_CATEGORY_LABEL: Record<string, string> = {
+  investment_gold: '投资金条',
+  self_reward_gold: '悦己黄金',
+  lightweight_jewelry: '轻量首饰',
+  regulatory_compliance: '合规应对',
+  brand_narrative: '品牌叙事',
+  channel_consolidation: '渠道整合',
+  premium_positioning: '高端卡位',
+  digital_marketing: '数字营销',
+}
+
+// 行动 channel 中文映射
+export const ACTION_CHANNEL_LABEL: Record<string, string> = {
+  offline_flagship: '线下旗舰',
+  offline_mall: '线下商场',
+  ecommerce: '电商平台',
+  b2b_distribution: 'B2B 分销',
+  all_channels: '全渠道',
+  regulatory: '监管申报',
+  TikTok: 'TikTok',
+  Instagram: 'Instagram',
+  WeChat: '微信',
+  Xiaohongshu: '小红书',
+}
+
+function actionCategoryLabel(value: unknown): string {
+  const raw = str(value)
+  return ACTION_CATEGORY_LABEL[raw] ?? raw
+}
+
+function actionChannelLabel(value: unknown): string {
+  const raw = str(value)
+  return ACTION_CHANNEL_LABEL[raw] ?? raw
+}
+
 const BASE = '/api'
 
 type JsonRecord = Record<string, unknown>
@@ -97,8 +133,50 @@ async function get<T>(path: string): Promise<T> {
   return res.json()
 }
 
+// 移除 LLM 在文本里塞的内部 ID 引用（用户界面不显示这些）。
+// 命中模式：
+//   （情报7） / （情报 7, 8）              ← 中文"情报X"列表
+//   （segment_signals[1]） / segment_signals[1]   ← snake_case ident 后跟 [N]（不论是否在括号内）
+//   compliance_blockers[0][1]              ← 多层下标
+//   （main_contradiction） / （key_signals）  ← 单纯 snake_case 标识符（含下划线）在括号内
+//   （evidence_ids: 1, 2）                  ← evidence / 证据 开头的内部字段
+//   (#5)                                    ← #N 短引用
+// 保留正常的中文括号注释（如 "（约15%）"、"（双轨合规失效）"）。
+function stripInternalRefs(input: string): string {
+  if (!input) return input
+  let out = input
+    // ① 括号包裹的 "情报X" 列表
+    .replace(/[（(]\s*情报\s*[\d\s,，、和]+\s*[)）]/g, '')
+    // ② 括号包裹的 ident[N][...] —— 例：(segment_signals[1])、（compliance_blockers[0][1]）
+    .replace(/[（(]\s*[a-zA-Z][\w]*(?:\[\d+\])+\s*[)）]/g, '')
+    // ③ 括号包裹的 evidence/证据/event_id/signal_id 字段
+    .replace(/[（(]\s*(?:evidence_ids?|evidence|证据|event_id|signal_id)[^)）]*[)）]/gi, '')
+    // ④ 括号包裹的纯 snake_case 标识符（必须含下划线，避免误伤 "USA" / "IPO" / 中文）
+    .replace(/[（(]\s*[a-z][a-z0-9]*(?:_[a-z0-9]+)+\s*[)）]/g, '')
+    // ⑤ (#5) 短引用
+    .replace(/[（(]\s*#\s*[\d\s,，]+\s*[)）]/g, '')
+    // ⑥ 裸露在文本中的 ident[N] / ident[N][M]…（无括号包裹）
+    .replace(/[a-zA-Z][\w]*(?:\[\d+\])+/g, '')
+  // 收敛多余的空白与孤立标点
+  out = out
+    .replace(/\s+([，。、；,;.!?])/g, '$1')
+    .replace(/[，,]\s*$/g, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim()
+  return out
+}
+
 function str(value: unknown, fallback = ''): string {
   return typeof value === 'string' ? value : fallback
+}
+
+// 同 str() 但顺带清洗 LLM 内部 ID 引用。用于所有面向用户显示的 LLM 文本。
+function clean(value: unknown, fallback = ''): string {
+  return stripInternalRefs(str(value, fallback))
+}
+
+function cleanStrings(value: unknown): string[] {
+  return strings(value).map(stripInternalRefs).filter(Boolean)
 }
 
 function num(value: unknown, fallback = 0): number {
@@ -148,20 +226,37 @@ function hostFromUrl(value: unknown): string {
   }
 }
 
+// All aliases normalize to the canonical ISO-3166 alpha-2 code used by the
+// backend. New markets only need an entry in MARKET_LAYOUT — add aliases
+// here only when the source data uses a non-ISO form (long name, Chinese).
 const MARKET_ALIASES: Record<string, string> = {
-  sg: 'Singapore',
-  singapore: 'Singapore',
-  新加坡: 'Singapore',
-  th: 'Thailand',
-  thailand: 'Thailand',
-  泰国: 'Thailand',
-  jp: 'Japan',
-  japan: 'Japan',
-  日本: 'Japan',
+  singapore: 'SG',
+  新加坡: 'SG',
+  thailand: 'TH',
+  泰国: 'TH',
+  japan: 'JP',
+  日本: 'JP',
+  korea: 'KR',
+  韩国: 'KR',
+  indonesia: 'ID',
+  印尼: 'ID',
+  malaysia: 'MY',
+  马来西亚: 'MY',
+  vietnam: 'VN',
+  越南: 'VN',
+  philippines: 'PH',
+  菲律宾: 'PH',
+  usa: 'US',
+  美国: 'US',
+  global: 'GLOBAL',
+  全球: 'GLOBAL',
 }
 
 function normalizeMarket(value: string): string {
-  return MARKET_ALIASES[value.trim().toLowerCase()] ?? MARKET_ALIASES[value.trim()] ?? value
+  const trimmed = value.trim()
+  // already-canonical ISO codes are kept as-is (upper-case)
+  if (MARKET_LAYOUT[trimmed.toUpperCase()]) return trimmed.toUpperCase()
+  return MARKET_ALIASES[trimmed.toLowerCase()] ?? MARKET_ALIASES[trimmed] ?? trimmed
 }
 
 function marketName(market: string): string {
@@ -240,7 +335,7 @@ function mapEnvFactor(raw: JsonRecord): EnvFactor | null {
     factorName: str(raw.factor_name),
     label: ENV_FACTOR_LABEL[fid],
     isPrimary: Boolean(raw.is_primary),
-    evidence: str(raw.evidence),
+    evidence: clean(raw.evidence),
   }
 }
 
@@ -267,12 +362,12 @@ function mapEvent(raw: JsonRecord): IntelEvent {
     ? backendImpact.map(item => ({
         kind: impactKind(item.kind),
         title: str(item.title, '影响判断'),
-        text: str(item.text),
+        text: clean(item.text),
       }))
     : [{
         kind: 'trend',
         title: '业务影响',
-        text: str(raw.business_impact ?? raw.key_claim ?? raw.summary),
+        text: clean(raw.business_impact ?? raw.key_claim ?? raw.summary),
       }]
 
   // 双坐标轴新字段 (architecture.md §7.3)
@@ -289,9 +384,9 @@ function mapEvent(raw: JsonRecord): IntelEvent {
     id: String(raw.event_id ?? raw.id ?? ''),
     sourceCategory: sourceCategoryValue,
     cat: sourceCategoryLabel(sourceCategoryValue),
-    title: str(raw.title),
-    summary: str(raw.summary),
-    keyClaim: str(raw.key_claim),
+    title: clean(raw.title),
+    summary: clean(raw.summary),
+    keyClaim: clean(raw.key_claim),
     source: sourceName || hostFromUrl(sourceUrl) || '公开来源',
     srcDetail: str(raw.src_detail) || hostFromUrl(sourceUrl),
     time: str(raw.time) || formatDateTime(publishedAt),
@@ -308,7 +403,7 @@ function mapEvent(raw: JsonRecord): IntelEvent {
     signalDirection,
     intensity: num(raw.intensity),
     impactScope: strings(raw.impact_scope),
-    downstreamImplications: strings(raw.downstream_implications),
+    downstreamImplications: cleanStrings(raw.downstream_implications),
     ambiguityFlags: strings(raw.ambiguity_flags),
     confidence: typeof raw.confidence === 'number' ? raw.confidence : num(raw.confidence),
     opportunityScore: num(raw.opportunity_score),
@@ -336,6 +431,8 @@ export async function fetchEventDetail(eventId: string): Promise<IntelEvent> {
 
 export interface DashboardSummary {
   as_of: string
+  window_days?: number
+  since?: string
   radar: {
     markets_scanned: number
     documents_integrated: number
@@ -371,7 +468,7 @@ function mapCountry(raw: JsonRecord): CountryNode {
     y: layout.y,
     status: marketStatus(opportunity, risk).status,
     size: layout.size,
-    headline: str(raw.headline),
+    headline: clean(raw.headline),
   }
 }
 
@@ -386,9 +483,9 @@ export async function fetchCountryDetail(id: string): Promise<CountryDetail | un
   const opportunity = num(raw.opportunity_score)
   const risk = num(raw.risk_score)
   const status = marketStatus(opportunity, risk)
-  const opportunities = strings(raw.key_opportunities)
-  const risks = strings(raw.key_risks)
-  const watchItems = strings(raw.watch_items)
+  const opportunities = cleanStrings(raw.key_opportunities)
+  const risks = cleanStrings(raw.key_risks)
+  const watchItems = cleanStrings(raw.watch_items)
   const triggers = [...opportunities, ...risks, ...watchItems].slice(0, 4)
   const hasPolicyRisk = risks.some(item => /法规|监管|合规|customs|regulation|compliance/i.test(item))
 
@@ -516,6 +613,47 @@ function highestPriority(items: JsonRecord[]): DeptPriority {
   return 'low'
 }
 
+// 一条 action 的 evidence/strategic 信息拍平为可显示 refs（不含技术 id）
+function refsFromAction(action: JsonRecord): import('./types').DeptRef[] {
+  const refs: import('./types').DeptRef[] = []
+  const evidence = list(action.evidence)
+  for (const ev of evidence) {
+    const title = clean(ev.title) || clean(ev.key_claim)
+    if (!title) continue
+    const primary = ev.primary_factor && typeof ev.primary_factor === 'object'
+      ? (ev.primary_factor as JsonRecord) : null
+    const fid = primary ? str(primary.factor_id) : ''
+    const sourceName = str(ev.source_name)
+    const keyClaimText = clean(ev.key_claim)
+    refs.push({
+      icon: 'feed',
+      text: title,
+      detail: [sourceName, keyClaimText].filter(Boolean).join(' · '),
+      sourceUrl: str(ev.source_url) || undefined,
+      eventId: str(ev.event_id) || undefined,
+      factorLabel: fid && /^F[1-7]$/.test(fid) ? ENV_FACTOR_LABEL[fid as EnvFactorId] : undefined,
+      factorId: fid && /^F[1-7]$/.test(fid) ? (fid as EnvFactorId) : undefined,
+    })
+  }
+  // 若没有 evidence 但有 source_url，也作为可点击 ref
+  const sourceUrl = str(action.source_url)
+  if (refs.length === 0 && sourceUrl) {
+    refs.push({ icon: 'external', text: '查看来源', sourceUrl })
+  }
+  // 仍无可显示证据时，回退展示 strategic_option / category + channel，仍不显示 market 名
+  if (refs.length === 0) {
+    const cat = actionCategoryLabel(action.strategic_option ?? action.category)
+    const channel = actionChannelLabel(action.channel)
+    const label = [cat, channel].filter(Boolean).join(' · ')
+    if (label) {
+      refs.push({ icon: 'target', text: label, detail: '智囊团综合推演（无直接证据链路）' })
+    } else {
+      refs.push({ icon: 'clipboard', text: '智囊团综合推演' })
+    }
+  }
+  return refs
+}
+
 export async function fetchDepartments(): Promise<Department[]> {
   const raw = await get<{ items: JsonRecord[] } | JsonRecord[]>('/actions')
   const actions = Array.isArray(raw) ? raw : raw.items
@@ -529,13 +667,26 @@ export async function fetchDepartments(): Promise<Department[]> {
     const meta = DEPT_META[name] ?? { id: deptId(name), sub: name, icon: 'clipboard' }
     const first = items[0]
     const steps = items.map(item => ({
-      title: str(item.action_title, str(item.action_detail, '行动建议')),
-      goal: str(item.reason, '推进 Agent 识别出的市场行动'),
-      how: str(item.action_detail, str(item.action_title)),
+      title: clean(item.action_title, str(item.action_detail, '行动建议')),
+      goal: clean(item.reason, '推进 Agent 识别出的市场行动'),
+      how: clean(item.action_detail, str(item.action_title)),
       when: str(item.deadline, '待定'),
-      expectedOutput: str(item.expected_output),
-      successMetric: str(item.success_metric),
+      expectedOutput: clean(item.expected_output),
+      successMetric: clean(item.success_metric),
     }))
+    // 收集本部门所有行动的 refs，按 sourceUrl/标题去重
+    const seen = new Set<string>()
+    const refs: import('./types').DeptRef[] = []
+    for (const action of items) {
+      for (const ref of refsFromAction(action)) {
+        const key = ref.eventId || ref.sourceUrl || ref.text
+        if (seen.has(key)) continue
+        seen.add(key)
+        refs.push(ref)
+        if (refs.length >= 6) break
+      }
+      if (refs.length >= 6) break
+    }
     return {
       id: meta.id,
       name,
@@ -547,15 +698,12 @@ export async function fetchDepartments(): Promise<Department[]> {
       market: str(first?.market),
       actionCount: items.length,
       summary: items.slice(0, 4).map(item => ({
-        text: str(item.action_title, str(item.action_detail, '行动建议')),
+        text: clean(item.action_title, str(item.action_detail, '行动建议')),
         when: str(item.deadline, '待定'),
       })),
-      goal: str(first?.reason, `推进 ${name} 相关行动`),
+      goal: clean(first?.reason, `推进 ${name} 相关行动`),
       steps,
-      refs: items.slice(0, 4).map(item => ({
-        icon: item.event_id ? 'feed' : 'clipboard',
-        text: item.event_id ? `关联情报事件 #${String(item.event_id)}` : str(item.source_url, str(item.market, 'Agent 推演结果')),
-      })),
+      refs,
     }
   })
 }
@@ -582,17 +730,17 @@ export async function fetchCouncilStrategy(): Promise<CouncilStrategy | null> {
     const o = s as JsonRecord
     options.push({
       tier,
-      name: str(o.name),
-      classicalBasis: str(o.classical_basis),
-      description: str(o.description),
-      preconditions: strings(o.preconditions),
-      cost: str(o.cost),
-      expectedOutcome: str(o.expected_outcome),
+      name: clean(o.name),
+      classicalBasis: clean(o.classical_basis),
+      description: clean(o.description),
+      preconditions: cleanStrings(o.preconditions),
+      cost: clean(o.cost),
+      expectedOutcome: clean(o.expected_outcome),
     })
   }
   return {
     market: str(raw.market),
-    summary: str(raw.council_summary),
+    summary: clean(raw.council_summary),
     timeWindow: str(raw.time_window),
     options,
   }
@@ -624,20 +772,20 @@ export async function fetchLatestBrief(): Promise<DailyBrief> {
   return {
     briefDate: str(brief.brief_date),
     asOf: str(brief.updated_at ?? brief.created_at),
-    executiveSummary: str(brief.executive_summary),
+    executiveSummary: clean(brief.executive_summary),
     markets,
     signalChanges: events.map(event => ({ cat: event.cat, text: event.title })),
     impacts: [
-      ...strings(brief.opportunities).slice(0, 2).map(text => briefImpact('opportunity', text)),
-      ...strings(brief.risks).slice(0, 2).map(text => briefImpact('risk', text)),
-      ...strings(brief.watch_items).slice(0, 2).map(text => briefImpact('watch', text)),
+      ...cleanStrings(brief.opportunities).slice(0, 2).map(text => briefImpact('opportunity', text)),
+      ...cleanStrings(brief.risks).slice(0, 2).map(text => briefImpact('risk', text)),
+      ...cleanStrings(brief.watch_items).slice(0, 2).map(text => briefImpact('watch', text)),
     ],
     actions: recommendedActions.slice(0, 4).map(item => {
       const department = str(item.department, '未指定')
       return {
         dept: department,
         deptId: deptId(department),
-        text: str(item.action_title, str(item.action_detail, '行动建议')),
+        text: clean(item.action_title, str(item.action_detail, '行动建议')),
       }
     }),
     sourceCount: num(brief.source_count),

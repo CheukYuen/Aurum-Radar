@@ -13,15 +13,13 @@ cp .env.example .env   # then fill in DATABASE_URL and DASHSCOPE_API_KEY
 uvicorn app.main:app --reload --port 8000
 # Docs: http://localhost:8000/docs  Health: http://localhost:8000/api/health
 
-# Run the full pipeline on sample data (no crawling required)
-.venv/bin/python -m scripts.run_pipeline
-
-# Run the strategic council (Stage 7) standalone
-.venv/bin/python -m scripts.run_council
-
 # Ingest today's data_probe crawler output into DB
 .venv/bin/python -m scripts.ingest_crawl_data
 # Options: --date 2026-05-23 | --all | --dry-run
+
+# Run pipeline stages 3-6 + council + evaluation on raw_documents already in RDS
+.venv/bin/python -m scripts.run_council
+# Options: --market Singapore | --since 30d | --until 2026-05-22 | --limit 50 | --no-evaluation
 
 # Trigger pipeline via API
 curl -X POST http://localhost:8000/api/jobs/run \
@@ -118,6 +116,6 @@ All environment differences (local public endpoint vs ECS internal endpoint) are
 
 ### What's stubbed vs implemented
 
-- **Implemented**: DB models + migrations, repository layer, pipeline orchestration skeleton, council (Stage 7), ingestion bridge (`ingest_crawl_data.py`), `run_pipeline.py` sample
+- **Implemented**: DB models + migrations, repository layer, pipeline orchestration skeleton, council (Stage 7), ingestion bridge (`ingest_crawl_data.py`), `run_council.py` (reads raw_documents from RDS → stages 3-6 + council + eval)
 - **Stubbed (raise NotImplementedError or log warning)**: all Provider `fetch()` methods in `ingestion/providers.py`, all API routes except `/api/health`, extraction/scoring/forecast/brief service logic
 - **Not yet created**: `alembic/` migrations, `app/scheduler/`, `tests/`

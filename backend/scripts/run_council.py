@@ -1,132 +1,65 @@
-"""Run the full Agent flow + strategic intelligence council on the data_probe
-2026-05-22 full-text snapshot, persist to the DB, and print what was inferred.
+"""Run the Agent flow + strategic intelligence council on documents already
+in RDS ``raw_documents``, persist results per market, and print the
+inferred reports.
 
-Usage (from backend/):  python -m scripts.run_council
+Usage (from backend/)::
 
-Flow: ingest(seed) → clean → extract → score → forecast → brief  (main
-pipeline, stages 1-6, persisted) → council for Singapore (§17: 5 experts →
-chief strategy officer) → council_reports + action_items persisted.
+    # Single market
+    python -m scripts.run_council --market SG --since 30d
+
+    # Multiple markets (comma-separated)
+    python -m scripts.run_council --market SG,TH,JP --since 30d
+
+    # Auto-discover all markets with enough docs in the window
+    python -m scripts.run_council --all-markets --min-docs 10
+
+    # Skip the QA evaluation agent (cheaper)
+    python -m scripts.run_council --all-markets --no-evaluation
+
+Reads raw_documents directly from RDS (data_probe should have already
+populated it via ``scripts.ingest_crawl_data``). For each selected market:
+
+  extract → score → forecast → brief        (pipeline stages 3-6, persisted)
+  council {market}                          (§17: 5 experts → CSO)
+                                              → council_reports + action_items
+  evaluation                                (QA pass, optional)
+
+Stages ingest + clean are skipped — the docs are already cleaned and have
+a ``content_hash`` row in the DB, so we feed Stage 3 directly and pre-fill
+the hash → id map so Stage 4 can link ``intelligence_events.raw_document_id``.
 """
 from __future__ import annotations
 
+import argparse
+import io
 import json
-from datetime import datetime, timezone
+import sys
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from contextlib import redirect_stdout
+from datetime import datetime, timedelta, timezone
 
 from app.database import repository
 from app.database.session import SessionLocal
-from app.schemas import RawDocumentIn, SourceType
 from app.services.council import derive_actions, run_council
 from app.services.evaluation import run_evaluation
 from app.services.pipeline import run_pipeline
-
-_NOW = datetime.now(timezone.utc)
-
-
-def _doc(source_type, source_name, title, url, published, body):
-    return RawDocumentIn(
-        source_type=source_type,
-        source_name=source_name,
-        market="Singapore",
-        title=title,
-        url=url,
-        published_at=datetime.fromisoformat(published),
-        fetched_at=_NOW,
-        summary=body[:200],
-        raw_content=body,
-    )
+from app.services.taxonomy import (
+    DEFAULT_WINDOW_DAYS,
+    MIN_DOCS_PER_MARKET,
+    display_name_for,
+)
 
 
-# 13 full-text Singapore articles — data_probe/output/DATA_SNAPSHOT_20260522_FULLTEXT.md
-SEED = [
-    _doc(SourceType.news, "Channel News Asia",
-         "金价推动新加坡消费者从金饰转向金条",
-         "https://www.channelnewsasia.com/singapore/gold-prices-singapore-consumers-bars-coins-jewellery-5800526",
-         "2025-01-05",
-         "新加坡黄金零售商正翻新设计、扩大以旧换新，以挽回客户——金价飙升使 2025 成为珠宝销售最弱的年份之一。"
-         "三季度金饰销量同比下降 8%，而金条金币购买量同比大涨 47%，消费者把黄金视为价值储存手段。"
-         "投资级金条豁免消费税(GST)，进一步推动消费者选金条而非金饰。零售商引入 3 克以下、空心设计的轻量化产品应对。"
-         "退休及年长买家部分被高价挤出，更多人卖出旧饰品套现。分析师预计金价将维持高位。"),
-    _doc(SourceType.news, "The Straits Times",
-         "新加坡金条金币需求 2026 年一季度创历史新高",
-         "https://www.straitstimes.com/business/companies-markets/demand-for-gold-bars-coins-in-singapore-hits-record-high-in-q1-2026",
-         "2026-04-29",
-         "2026 年一季度新加坡金条金币需求同比增长 42% 至 3.5 吨，创历史新高；同期金饰需求同比下降 13% 至 1.5 吨。"
-         "2025 全年金条金币需求增长 48% 至 9.6 吨，金饰需求下降 13% 至 6 吨(世界黄金协会数据)。"
-         "金价 2026 年 1 月一度冲上每盎司 5,589 美元历史高点。地缘政治风险溢价预计将持续支撑金价。"),
-    _doc(SourceType.news, "VnExpress International",
-         "新加坡珠宝商应对金价高企：轻量化、低克拉、以旧换新",
-         "https://e.vnexpress.net/news/business/economy/singapore-gold-jewelers-pivot-5002292.html",
-         "2026-03-15",
-         "Kim Poh Hong 金行报告 22K 金饰需求骤降 30-40%，已暂停向批发商下单。"
-         "G&J Goldsmiths 推出 3 克以下及空心设计提升可负担性。Eli J Fine Jewelry 称 20-30% 客户现偏好 14K 金(此前约 10%)。"
-         "部分设计师改用铂金替代白金以应对价差。珠宝商普遍通过调整设计在销量下滑下维持销售额。"),
-    _doc(SourceType.news, "Malay Mail via Yahoo News",
-         "Bullion Beats Bling：新加坡买家以旧饰换金条",
-         "https://malaysia.news.yahoo.com/bullion-beats-bling-gold-buyers-075543105.html",
-         "2026-01-06",
-         "金条金币购买量同比激增 47%，金饰销量同比下降 8%。零售商以更轻、空心的设计应对。"
-         "包括退休人员在内的客户主动以旧饰品套现。新加坡珠宝商协会会长指投资级金条的 GST 豁免是推动金条优于饰品的关键。"),
-    _doc(SourceType.news, "Malay Mail via Yahoo News",
-         "Gold Rush 2026：珠宝商、典当行、年轻投资者全面入场",
-         "https://malaysia.news.yahoo.com/gold-rush-hits-singapore-jewellers-011334679.html",
-         "2026-03-18",
-         "金价 1 月 28 日触及每盎司 5,589 美元纪录后回落，3 月初因美以伊军事紧张反弹至 5,300 美元上方。"
-         "Indigo Precious Metals 2026 年需求翻倍以上，Silver Bullion 年销售增长约 350%。"
-         "年轻消费者出于长期财富保值大量进入黄金投资市场。多家机构扩充库存与仓储。"),
-    _doc(SourceType.report, "Yahoo Finance Singapore",
-         "2026 年一季度全球金条需求深度数据",
-         "https://sg.finance.yahoo.com/news/roaring-demand-gold-bullion-1q2026-220000162.html",
-         "2026-04-29",
-         "一季度全球金条需求达 473.6 吨，同比增 140 吨。中国大陆 206.9 吨，新加坡 3.5 吨(同比 +1 吨，历史新高)。"
-         "黄金 ETF 需求下跌，黄金首饰需求下跌 137 吨至 299.7 吨。世界黄金协会指消费者正将首饰消费转向实物金条，尤其在中国和印度。"),
-    _doc(SourceType.news, "Vietnam+",
-         "新加坡金零售商大幅补库存应对需求激增",
-         "https://en.vietnamplus.vn/singapores-gold-retailers-boost-inventories-post339491.vnp",
-         "2026-03-18",
-         "新加坡贵金属零售商大幅扩充库存以应对避险需求与降息预期带动的购金热。"
-         "20-30 岁年轻投资者与传统中年买家一同入场，把黄金视为长期投资。"
-         "瑞士、英国、香港的精炼产能与物流瓶颈推高溢价，新加坡零售商建立 100 克金条与 1 盎司金币的缓冲库存。"),
-    _doc(SourceType.news, "Vietnam+",
-         "新加坡力争成为全球黄金交易枢纽",
-         "https://en.vietnamplus.vn/singapore-aims-to-become-global-gold-trading-hub-post340079.vnp",
-         "2026-03-27",
-         "新加坡力争成为亚洲首要黄金交易中心，与迪拜、上海、香港竞争。"
-         "MAS 与新加坡金银市场协会公布计划：开发黄金资本市场产品提升价格发现与流动性、建立 OTC 大宗黄金清算结算系统、"
-         "MAS 直接向外国央行提供金库服务，并批准三家金库运营商。"),
-    _doc(SourceType.news, "Vietnam+",
-         "新加坡考虑扩建黄金储存设施支撑枢纽目标",
-         "https://en.vietnamplus.vn/singapore-considers-expanding-gold-storage-capacity-post340287.vnp",
-         "2026-04-02",
-         "MAS 正评估多个新建仓储选址，并考虑改造现有设施，拟选址樟宜机场附近以贴近运输枢纽。"
-         "香港目前主导区域市场、是黄金流入中国的主要门户。全球央行持有约 39,000 吨黄金。"),
-    _doc(SourceType.competitor, "Alvinology",
-         "本地品牌 RISIS 50 周年：Jubilee 系列与文化兰花晚会",
-         "https://alvinology.com/2026/04/11/risis-celebrates-50-years-jubilee/",
-         "2026-04-11",
-         "新加坡本土珠宝品牌 RISIS(1976 年创立)迎来 50 周年，推出五章节 Jubilee Capsule 系列，"
-         "题材含 24K 瑞士金封存兰花、峇峇娘惹镂空丝网工艺，并首次进军制表。"
-         "与本地甜品师 Janice Wong 联名推出兰花胸针(定价 $368-398)。举办定位「兰花界 Met Gala」的文化兰花晚会为公益筹款。"),
-    _doc(SourceType.competitor, "VnExpress International",
-         "新加坡奢侈品牌 Aupen 携手 LVMH 推出首个珠宝线",
-         "https://e.vnexpress.net/news/business/companies/aupen-jewelry-lvmh-4957674.html",
-         "2025-10-29",
-         "新加坡奢侈箱包品牌 Aupen(2022 年创立)与 LVMH Métiers d'Art 合作推出首个高级珠宝系列，含黄金与钻石单品。"
-         "品牌曾获 Taylor Swift、Selena Gomez 等名人加持。LVMH 合作为年轻奢侈品牌提供工坊背书，并将生产基地从新加坡迁往法国。"),
-    _doc(SourceType.competitor, "Sassy Mama Singapore",
-         "新加坡 19 个平价及独立珠宝品牌指南",
-         "https://www.sassymamasg.com/where-to-buy-fashion-jewellery-in-singapore/",
-         "2026-05-01",
-         "新加坡涌现大量本土独立珠宝品牌：By Invite Only(回收纯金、防过敏、多门店)、Curious Creatures(永久珠宝、定制)、"
-         "EDEN+ELIE(社会责任、传统珠串)、PYAR(可持续采购)。国际连锁 Pandora、Swarovski、Monica Vinader、Lovisa 在新设店。"
-         "本土设计、可持续、个性化定制成为年轻消费者关注重点。"),
-    _doc(SourceType.mall, "VnExpress International",
-         "AP × Swatch Royal Pop 新加坡发售引发排队热潮",
-         "https://e.vnexpress.net/news/business/companies/ap-swatch-royal-pop-singapore-5075203.html",
-         "2026-05-18",
-         "Audemars Piguet × Swatch 联名 Royal Pop 怀表在新加坡 ION Orchard、滨海湾金沙、VivoCity 发售，零售价约 S$535-570。"
-         "ION 早上 8 时排队 150-200 人、一小时售罄；VivoCity 因人潮提前关店。当天 Carousell 出现 80+ 转售帖，最高叫价为零售价 18 倍。"
-         "全球多地发售引发骚乱，被业界称为「十年来最成功的 PR 事件」。"),
-]
+def _parse_since(value: str | None) -> datetime | None:
+    """Parse --since: ISO date / datetime, or ``Nd`` shorthand (e.g. ``30d``)."""
+    if not value:
+        return None
+    if value.endswith("d") and value[:-1].isdigit():
+        return datetime.now(timezone.utc) - timedelta(days=int(value[:-1]))
+    dt = datetime.fromisoformat(value)
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt
 
 
 def _print_council(r: dict) -> None:
@@ -199,12 +132,103 @@ def _print_evaluation(r: dict) -> None:
     print("=" * 72)
 
 
-def main() -> None:
-    print(f"== 主流水线：{len(SEED)} 篇真实文章 → 抽取 / 评分 / 研判 / 简报 ==")
+def _parse_args() -> argparse.Namespace:
+    p = argparse.ArgumentParser(
+        description="Run agent pipeline + council on raw_documents from RDS"
+    )
+    p.add_argument(
+        "--market",
+        default=None,
+        help="Market code(s), comma-separated. ISO-3166 alpha-2 (SG/TH/JP/...). "
+        "Mutually exclusive with --all-markets.",
+    )
+    p.add_argument(
+        "--all-markets",
+        action="store_true",
+        help=f"Auto-discover markets in RDS with ≥ --min-docs documents in the window.",
+    )
+    p.add_argument(
+        "--min-docs",
+        type=int,
+        default=MIN_DOCS_PER_MARKET,
+        help=f"Min raw_documents in window to consider a market (default: {MIN_DOCS_PER_MARKET})",
+    )
+    p.add_argument(
+        "--since",
+        default=f"{DEFAULT_WINDOW_DAYS}d",
+        help=f"ISO date / datetime, or Nd shorthand (default: {DEFAULT_WINDOW_DAYS}d). Filters published_at.",
+    )
+    p.add_argument("--until", default=None, help="Upper bound on published_at (optional)")
+    p.add_argument("--limit", type=int, default=None, help="Max docs per market to load")
+    p.add_argument(
+        "--no-evaluation",
+        action="store_true",
+        help="Skip the QA evaluation agent",
+    )
+    p.add_argument(
+        "--concurrency",
+        type=int,
+        default=1,
+        help="Parallel markets (default 1 = serial). 4 is a safe value for "
+        "DashScope qwen-plus + qwen-max; higher may hit LLM rate limits.",
+    )
+    p.add_argument(
+        "--output",
+        default="council_output.json",
+        help="Where to dump the full council + evaluation JSON (markets nested)",
+    )
+    args = p.parse_args()
+    if args.market and args.all_markets:
+        p.error("--market and --all-markets are mutually exclusive")
+    if not args.market and not args.all_markets:
+        args.all_markets = True  # default to auto-discovery
+    return args
+
+
+def _resolve_markets(args: argparse.Namespace, since: datetime | None, until: datetime | None) -> list[str]:
+    """Decide which market codes to process."""
+    if args.market:
+        return [m.strip() for m in args.market.split(",") if m.strip()]
+
+    # --all-markets: auto-discover from RDS
+    db = SessionLocal()
+    try:
+        rows = repository.list_markets_with_docs(
+            db, since=since, until=until, min_docs=args.min_docs
+        )
+    finally:
+        db.close()
+    print(
+        f"== 自动发现 {len(rows)} 个市场（≥ {args.min_docs} 篇，{args.since} 内）=="
+    )
+    for m, c in rows:
+        print(f"   {m:8} {display_name_for(m):8} {c} 篇")
+    print()
+    return [m for m, _ in rows]
+
+
+def _run_one_market(market: str, since, until, limit, *, run_eval: bool) -> tuple[dict, dict | None]:
+    """Run the full per-market flow; return (council_report, evaluation_or_none)."""
+    db = SessionLocal()
+    try:
+        docs, hash_id_map = repository.list_raw_documents(
+            db, market=market, since=since, until=until, limit=limit
+        )
+    finally:
+        db.close()
+
+    if not docs:
+        print(f"!! {market}: 窗口内无文档，跳过。")
+        return {}, None
+
+    print(f"\n>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+    print(f">>>>>  {market} {display_name_for(market)} — {len(docs)} 篇 raw_documents")
+    print(f">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
     result = run_pipeline(
-        markets=["Singapore"],
-        seed_documents=SEED,
-        stages=["ingest", "clean", "extract", "score", "forecast", "brief"],
+        markets=[market],
+        seed_documents=docs,
+        prefilled_hash_id_map=hash_id_map,
+        stages=["extract", "score", "forecast", "brief"],
         trigger_type="manual",
         persist=True,
     )
@@ -212,25 +236,106 @@ def main() -> None:
         print(f"  {s.stage.value:9} {s.status.value:8} rows={s.rows_affected}"
               + (f"  ERROR: {s.error_message}" if s.error_message else ""))
 
-    print("\n== 战略情报智囊团（§17，Singapore）==")
+    print(f"\n== 战略情报智囊团（§17，{market}）==")
     db = SessionLocal()
+    evaluation: dict | None = None
     try:
-        report = run_council(db, "Singapore")
-        repository.save_council_report(db, "Singapore", report)
-        actions = derive_actions("Singapore", report)
+        report = run_council(db, market)
+        repository.save_council_report(db, market, report)
+        actions = derive_actions(market, report)
         report["_derived_action_count"] = repository.save_actions(db, actions)
         _print_council(report)
-        print("\n== 评估 Agent：QA 复核 ==")
-        evaluation = run_evaluation(db, "Singapore", council_report=report)
+        if run_eval:
+            print(f"\n== 评估 Agent：QA 复核（{market}）==")
+            evaluation = run_evaluation(db, market, council_report=report)
+            _print_evaluation(evaluation)
     finally:
         db.close()
-    _print_evaluation(evaluation)
+    return report, evaluation
 
-    # dump the full decision report + evaluation for inspection
-    with open("council_singapore_output.json", "w", encoding="utf-8") as f:
-        json.dump({"council": report, "evaluation": evaluation},
-                  f, ensure_ascii=False, indent=2)
-    print("完整决策报告 + 评估报告已写入 backend/council_singapore_output.json")
+
+def _run_one_market_buffered(
+    market: str, since, until, limit, *, run_eval: bool
+) -> tuple[dict, dict | None, str, str | None]:
+    """Run one market with stdout captured into a string buffer.
+
+    Returns ``(report, evaluation, captured_output, error_message)``. Used
+    by the concurrent path so that each market's printed output appears
+    as a coherent block instead of interleaving across threads. Loguru
+    progress lines still go to stderr in real time.
+    """
+    buf = io.StringIO()
+    err_msg: str | None = None
+    report: dict = {}
+    evaluation: dict | None = None
+    with redirect_stdout(buf):
+        try:
+            report, evaluation = _run_one_market(
+                market, since, until, limit, run_eval=run_eval
+            )
+        except Exception as exc:  # noqa: BLE001 - reported via err_msg
+            err_msg = str(exc)
+            print(f"!! {market}: failed — {exc}")
+    return report, evaluation, buf.getvalue(), err_msg
+
+
+def main() -> None:
+    args = _parse_args()
+    since = _parse_since(args.since)
+    until = _parse_since(args.until)
+
+    markets = _resolve_markets(args, since, until)
+    if not markets:
+        print(f"!! 没有市场达到 --min-docs={args.min_docs} 的门槛，无事可做。")
+        return
+
+    concurrency = max(1, args.concurrency)
+    all_results: dict[str, dict] = {}
+    failures: list[tuple[str, str]] = []
+
+    if concurrency == 1:
+        # Serial path — keep the original live-print behavior
+        for market in markets:
+            try:
+                report, evaluation = _run_one_market(
+                    market, since, until, args.limit,
+                    run_eval=not args.no_evaluation,
+                )
+            except Exception as exc:  # noqa: BLE001 - one market must not abort others
+                print(f"!! {market}: failed — {exc}")
+                failures.append((market, str(exc)))
+                continue
+            if report:
+                all_results[market] = {"council": report, "evaluation": evaluation}
+    else:
+        # Concurrent path — buffer each market's stdout, flush on completion
+        print(f"== 并发跑 {len(markets)} 个市场，concurrency={concurrency} ==\n")
+        with ThreadPoolExecutor(max_workers=concurrency) as ex:
+            futures = {
+                ex.submit(
+                    _run_one_market_buffered,
+                    m, since, until, args.limit,
+                    run_eval=not args.no_evaluation,
+                ): m
+                for m in markets
+            }
+            for fut in as_completed(futures):
+                market = futures[fut]
+                report, evaluation, captured, err = fut.result()
+                # Flush this market's full output as a block
+                sys.stdout.write(captured)
+                sys.stdout.flush()
+                if err:
+                    failures.append((market, err))
+                elif report:
+                    all_results[market] = {"council": report, "evaluation": evaluation}
+
+    with open(args.output, "w", encoding="utf-8") as f:
+        json.dump(all_results, f, ensure_ascii=False, indent=2)
+    print(f"\n所有市场决策报告已写入 backend/{args.output}")
+    print(f"成功 {len(all_results)} 个市场，失败 {len(failures)} 个")
+    for m, err in failures:
+        print(f"  FAIL {m}: {err}")
 
 
 if __name__ == "__main__":

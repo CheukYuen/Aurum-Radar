@@ -56,10 +56,18 @@ function AiRadarStrip({ summary, onOpenBriefing }: { summary: DashboardSummary |
         ))}
       </div>
 
-      {/* Timestamp + briefing button */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, paddingLeft: 16, borderLeft: '1px solid var(--line-strong)', flexShrink: 0 }}>
-          <div style={{ textAlign: 'right' }}>
-            <div style={{ fontSize: 10.5, color: 'var(--ink-4)', letterSpacing: '.04em' }}>最近更新</div>
+      {/* Timestamp + window chip + briefing button */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, paddingLeft: 16, borderLeft: '1px solid var(--line-strong)', flexShrink: 0 }}>
+        <div style={{
+          padding: '3px 9px', borderRadius: 999,
+          background: 'var(--gold-tint)', border: '1px solid rgba(200,165,105,.35)',
+          fontSize: 10.5, fontWeight: 700, color: 'var(--gold-2)',
+          letterSpacing: '.04em', whiteSpace: 'nowrap',
+        }}>
+          近 {summary?.window_days ?? 30} 天
+        </div>
+        <div style={{ textAlign: 'right' }}>
+          <div style={{ fontSize: 10.5, color: 'var(--ink-4)', letterSpacing: '.04em' }}>最近更新</div>
           <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--ink-2)', fontFamily: 'var(--font-mono)' }}>
             {summary?.as_of ? new Date(summary.as_of).toLocaleString('zh-CN', { hour12: false }) : '—'}
           </div>
@@ -81,7 +89,7 @@ function AiRadarStrip({ summary, onOpenBriefing }: { summary: DashboardSummary |
 }
 
 export default function OverviewPage({ onNav, onOpenBriefing }: { onNav: (id: PageId) => void; onOpenBriefing: () => void }) {
-  const [selected, setSelected] = useState('Singapore')
+  const [selected, setSelected] = useState('SG')
   const [countries, setCountries] = useState<CountryNode[]>([])
   const [countryDetail, setCountryDetail] = useState<CountryDetail | null>(null)
   const [summary, setSummary] = useState<DashboardSummary | null>(null)
@@ -90,7 +98,8 @@ export default function OverviewPage({ onNav, onOpenBriefing }: { onNav: (id: Pa
     fetchDashboardSummary().then(setSummary).catch(console.error)
     fetchCountries().then(items => {
       setCountries(items)
-      const preferred = items.find(item => item.id === 'Singapore') ?? items[0]
+      // Prefer SG as the landing market; fall back to whatever the backend returns first
+      const preferred = items.find(item => item.id === 'SG') ?? items[0]
       if (preferred) setSelected(preferred.id)
     }).catch(console.error)
   }, [])

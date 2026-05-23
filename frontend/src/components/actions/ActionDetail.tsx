@@ -1,5 +1,6 @@
 import Icon from '../ui/Icon'
-import type { Department } from '../../api/types'
+import type { Department, DeptRef, EnvFactorId } from '../../api/types'
+import { ENV_FACTOR_TONE } from '../../api'
 
 const PRIORITY_LABEL = {
   high: { text: '高优先级', k: 'clay' },
@@ -24,7 +25,74 @@ const btnPrimary: React.CSSProperties = {
   boxShadow: '0 4px 10px rgba(184,145,80,.25), inset 0 1px 0 rgba(255,252,244,.4)',
 }
 
-export default function ActionDetail({ d }: { d: Department }) {
+interface ActionDetailProps {
+  d: Department
+}
+
+// 单条「关联依据」行 —— 有 sourceUrl 时为外链；否则纯展示，不做跨页跳转。
+// 永远不显示 #ID 等内部技术标识。
+function RefRow({ r }: { r: DeptRef }) {
+  const fid = r.factorId as EnvFactorId | undefined
+  const factorTone = fid ? ENV_FACTOR_TONE[fid] : null
+
+  const body = (
+    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, flex: 1, minWidth: 0 }}>
+      <span style={{
+        color: 'var(--gold-2)', marginTop: 2, flexShrink: 0,
+        width: 22, height: 22, borderRadius: 6,
+        background: 'var(--gold-wash)', border: '1px solid var(--line)',
+        display: 'grid', placeItems: 'center',
+      }}>
+        <Icon name={r.icon} size={11} />
+      </span>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div className="flex items-center gap-1.5 flex-wrap" style={{ marginBottom: 3 }}>
+          <span style={{
+            fontSize: 12.5, fontWeight: 600, color: 'var(--ink-1)', lineHeight: 1.4,
+            textDecoration: r.sourceUrl ? 'underline dotted var(--gold-3)' : 'none',
+            textUnderlineOffset: 3,
+          }}>
+            {r.text}
+          </span>
+          {factorTone && r.factorLabel && (
+            <span className={`chip ${factorTone}`} style={{ fontSize: 9.5, padding: '1px 6px' }}>
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 8.5, opacity: .8 }}>{fid} </span>
+              {r.factorLabel}
+            </span>
+          )}
+        </div>
+        {r.detail && (
+          <div style={{ fontSize: 11.5, color: 'var(--ink-3)', lineHeight: 1.45, overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+            {r.detail}
+          </div>
+        )}
+      </div>
+      {r.sourceUrl && (
+        <span style={{ color: 'var(--ink-4)', marginTop: 4, flexShrink: 0 }}>
+          <Icon name="external" size={11} />
+        </span>
+      )}
+    </div>
+  )
+
+  if (r.sourceUrl) {
+    return (
+      <a href={r.sourceUrl} target="_blank" rel="noreferrer"
+        style={{
+          display: 'flex', textDecoration: 'none',
+          padding: '8px 10px', borderRadius: 8,
+          background: 'transparent', cursor: 'pointer',
+        }}
+        onMouseEnter={ev => (ev.currentTarget.style.background = 'rgba(184,145,80,.06)')}
+        onMouseLeave={ev => (ev.currentTarget.style.background = 'transparent')}>
+        {body}
+      </a>
+    )
+  }
+  return <div style={{ display: 'flex', padding: '8px 10px' }}>{body}</div>
+}
+
+export default function ActionDetail({ d }: ActionDetailProps) {
   const pl = PRIORITY_LABEL[d.priority]
   return (
     <div className="card flex flex-col" style={{ padding: 24, height: '100%' }}>
@@ -122,21 +190,26 @@ export default function ActionDetail({ d }: { d: Department }) {
         ))}
       </div>
 
-      <div style={{ fontSize: 11, letterSpacing: '.18em', color: 'var(--ink-3)', textTransform: 'uppercase', fontWeight: 700, marginBottom: 8 }}>
-        C. 关联依据
+      <div className="flex items-center justify-between" style={{ marginBottom: 8 }}>
+        <div style={{ fontSize: 11, letterSpacing: '.18em', color: 'var(--ink-3)', textTransform: 'uppercase', fontWeight: 700 }}>
+          C. 关联依据
+        </div>
+        <div style={{ fontSize: 11, color: 'var(--ink-3)' }}>{d.refs.length} 条证据</div>
       </div>
       <div style={{
-        padding: 14,
+        padding: 6,
         background: 'linear-gradient(135deg, var(--pearl-warm), var(--ivory))',
         border: '1px solid var(--line-soft)',
         borderRadius: 10,
-        display: 'flex', flexDirection: 'column', gap: 7, marginBottom: 18,
+        display: 'flex', flexDirection: 'column', gap: 2, marginBottom: 18,
       }}>
-        {d.refs.map((r, i) => (
-          <div key={i} className="flex items-start gap-2" style={{ fontSize: 12.5, color: 'var(--ink-2)' }}>
-            <span style={{ color: 'var(--gold-2)', marginTop: 1, flexShrink: 0 }}><Icon name={r.icon} size={13} /></span>
-            <span>{r.text}</span>
+        {d.refs.length === 0 && (
+          <div style={{ padding: '12px 10px', fontSize: 12.5, color: 'var(--ink-3)' }}>
+            智囊团基于综合推演产出，未关联单一情报事件
           </div>
+        )}
+        {d.refs.map((r, i) => (
+          <RefRow key={i} r={r} />
         ))}
       </div>
 

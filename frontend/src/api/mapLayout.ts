@@ -32,10 +32,21 @@ function generateContinentDots(): [number, number, number][] {
 
 export const CONTINENT_DOTS = generateContinentDots()
 
+// Market codes are ISO-3166 alpha-2 (plus the synthetic "GLOBAL" bucket).
+// Coordinates are tuned to the existing 1600×780 world-map viewBox.
 export const MARKET_LAYOUT: Record<string, { name: string; x: number; y: number; size: number }> = {
-  Singapore: { name: '新加坡', x: 1240, y: 460, size: 18 },
-  Thailand: { name: '泰国', x: 1168, y: 410, size: 15 },
-  Japan: { name: '日本', x: 1380, y: 280, size: 14 },
+  // East / Southeast Asia (clustered around SG hub)
+  SG: { name: '新加坡', x: 1240, y: 460, size: 18 },
+  TH: { name: '泰国', x: 1168, y: 410, size: 15 },
+  JP: { name: '日本', x: 1380, y: 280, size: 14 },
+  KR: { name: '韩国', x: 1340, y: 295, size: 13 },
+  ID: { name: '印尼', x: 1280, y: 525, size: 13 },
+  MY: { name: '马来西亚', x: 1195, y: 470, size: 13 },
+  VN: { name: '越南', x: 1228, y: 385, size: 13 },
+  PH: { name: '菲律宾', x: 1335, y: 445, size: 13 },
+  // Other regions
+  US: { name: '美国', x: 320, y: 265, size: 16 },
+  GLOBAL: { name: '全球', x: 800, y: 120, size: 14 },
 }
 
 export const DISTRICT_LAYOUT: Record<string, { x: number; y: number; sub: string }> = {
