@@ -130,7 +130,7 @@ export default function ActionsPage({ activeDept, onDeptChange, filters }: Actio
         </div>
 
         {/* Right detail */}
-        <div style={{ position: 'sticky', top: 18, maxHeight: 'calc(100vh - 140px)' }}>
+        <div style={{ position: 'sticky', top: 18, maxHeight: 'calc(100vh - 140px)', minWidth: 0 }}>
           {d ? <ActionDetail d={d} /> : <div className="card" style={{ padding: 24, color: 'var(--ink-3)' }}>请选择行动部门</div>}
         </div>
       </div>

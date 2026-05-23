@@ -78,7 +78,7 @@ function RefRow({ r }: { r: DeptRef }) {
 export default function ActionDetail({ d }: ActionDetailProps) {
   const pl = PRIORITY_LABEL[d.priority]
   return (
-    <div className="card flex flex-col" style={{ padding: 24, height: '100%' }}>
+    <div className="card flex min-w-0 flex-col" style={{ padding: 24, height: '100%', minHeight: 0, overflowY: 'auto' }}>
       <div className="flex items-center gap-3">
         <span style={{
           width: 40, height: 40, borderRadius: 12,
@@ -122,7 +122,7 @@ export default function ActionDetail({ d }: ActionDetailProps) {
         border: '1px solid rgba(122,157,126,.3)',
         borderRadius: 10, marginBottom: 18,
         fontFamily: 'var(--font-serif)', fontSize: 15, fontWeight: 600, color: 'var(--sage-deep)',
-        display: 'flex', alignItems: 'center', gap: 10,
+        display: 'flex', alignItems: 'center', gap: 10, wordBreak: 'break-word',
       }}>
         <Icon name="target" size={16} />
         {d.goal}
@@ -149,10 +149,11 @@ export default function ActionDetail({ d }: ActionDetailProps) {
               border: '1px solid var(--line-soft)',
               borderRadius: 10,
               display: 'grid', gridTemplateColumns: '1fr auto', gap: 12,
+              minWidth: 0,
             }}>
-              <div>
-                <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--ink-1)', marginBottom: 6 }}>{s.title}</div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '4px 12px', fontSize: 12, color: 'var(--ink-2)' }}>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--ink-1)', marginBottom: 6, wordBreak: 'break-word' }}>{s.title}</div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '4px 12px', fontSize: 12, color: 'var(--ink-2)', minWidth: 0, wordBreak: 'break-word' }}>
                   <span style={{ color: 'var(--ink-3)' }}>目标:</span><span>{s.goal}</span>
                   <span style={{ color: 'var(--ink-3)' }}>执行:</span><span>{s.how}</span>
                   {s.expectedOutput && (
