@@ -27,5 +27,7 @@ class Settings(BaseSettings):
 
     SCHEDULER_ENABLED: bool = False
 
+    DATA_PROBE_OUTPUT_DIR: str = "../data_probe/output/normalized"
+
 
 settings = Settings()
