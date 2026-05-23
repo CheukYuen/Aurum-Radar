@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from datetime import date, datetime
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy import cast
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Session
 
 from app.database.session import get_db
@@ -33,12 +35,14 @@ def _serialize_brief(brief: DailyBrief) -> dict:
 
 
 @router.get("/brief/latest")
-def get_latest_brief(db: Session = Depends(get_db)):
-    brief = (
-        db.query(DailyBrief)
-        .order_by(DailyBrief.brief_date.desc().nullslast(), DailyBrief.id.desc())
-        .first()
-    )
+def get_latest_brief(
+    db: Session = Depends(get_db),
+    market: str | None = Query(None),
+):
+    q = db.query(DailyBrief).order_by(DailyBrief.brief_date.desc().nullslast(), DailyBrief.id.desc())
+    if market:
+        q = q.filter(DailyBrief.markets.contains(cast([market], JSONB)))
+    brief = q.first()
     if brief is None:
         raise HTTPException(status_code=404, detail="Brief not found")
     return _serialize_brief(brief)

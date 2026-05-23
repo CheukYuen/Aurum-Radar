@@ -133,6 +133,12 @@ async function get<T>(path: string): Promise<T> {
   return res.json()
 }
 
+function withMarket(url: string, market?: string): string {
+  if (!market || market === 'GLOBAL') return url
+  const sep = url.includes('?') ? '&' : '?'
+  return `${url}${sep}market=${encodeURIComponent(market)}`
+}
+
 // 移除 LLM 在文本里塞的内部 ID 引用（用户界面不显示这些）。
 // 命中模式：
 //   （情报7） / （情报 7, 8）              ← 中文"情报X"列表
@@ -426,9 +432,10 @@ export interface EventsResponse {
   size: number
 }
 
-export async function fetchEvents(category?: string, page = 1, size = 20): Promise<EventsResponse> {
+export async function fetchEvents(category?: string, page = 1, size = 20, market?: string): Promise<EventsResponse> {
   const params = new URLSearchParams({ page: String(page), size: String(size) })
   if (category && category !== '全部') params.set('category', category)
+  if (market && market !== 'GLOBAL') params.set('market', market)
   const raw = await get<{ items: JsonRecord[]; total: number; page: number; size: number }>(`/events?${params}`)
   return { ...raw, items: raw.items.map(mapEvent) }
 }
@@ -459,8 +466,8 @@ export interface DashboardSummary {
   }
 }
 
-export async function fetchDashboardSummary(): Promise<DashboardSummary> {
-  return get<DashboardSummary>('/dashboard/summary')
+export async function fetchDashboardSummary(market?: string): Promise<DashboardSummary> {
+  return get<DashboardSummary>(withMarket('/dashboard/summary', market))
 }
 
 function mapCountry(raw: JsonRecord): CountryNode {
@@ -662,8 +669,8 @@ function refsFromAction(action: JsonRecord): import('./types').DeptRef[] {
   return refs
 }
 
-export async function fetchDepartments(): Promise<Department[]> {
-  const raw = await get<{ items: JsonRecord[] } | JsonRecord[]>('/actions')
+export async function fetchDepartments(market?: string): Promise<Department[]> {
+  const raw = await get<{ items: JsonRecord[] } | JsonRecord[]>(withMarket('/actions', market))
   const actions = Array.isArray(raw) ? raw : raw.items
   const byDept = new Map<string, JsonRecord[]>()
   actions.forEach(action => {
@@ -716,10 +723,13 @@ export async function fetchDepartments(): Promise<Department[]> {
   })
 }
 
-export async function fetchCouncilStrategy(): Promise<CouncilStrategy | null> {
+export async function fetchCouncilStrategy(market?: string): Promise<CouncilStrategy | null> {
   let raw: JsonRecord
   try {
-    raw = await get<JsonRecord>('/council/latest')
+    const path = market && market !== 'GLOBAL'
+      ? `/markets/${encodeURIComponent(market)}/council`
+      : '/council/latest'
+    raw = await get<JsonRecord>(path)
   } catch {
     return null // 404 — no council report persisted yet
   }
@@ -758,11 +768,11 @@ function briefImpact(kind: CountryImpact['kind'], text: string): CountryImpact {
   return { kind, text }
 }
 
-export async function fetchLatestBrief(): Promise<DailyBrief> {
+export async function fetchLatestBrief(market?: string): Promise<DailyBrief> {
   const [brief, countries, events] = await Promise.all([
-    get<JsonRecord>('/brief/latest'),
+    get<JsonRecord>(withMarket('/brief/latest', market)),
     fetchCountries().catch(() => []),
-    fetchEvents('全部', 1, 5).then(res => res.items).catch(() => []),
+    fetchEvents('全部', 1, 5, market).then(res => res.items).catch(() => []),
   ])
 
   const recommendedActions = list(brief.recommended_actions)

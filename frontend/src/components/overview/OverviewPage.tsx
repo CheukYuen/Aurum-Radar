@@ -75,8 +75,13 @@ export default function OverviewPage({
   const [summary, setSummary] = useState<DashboardSummary | null>(null)
 
   useEffect(() => {
-    fetchDashboardSummary().then(setSummary).catch(console.error)
-  }, [])
+    let cancelled = false
+    fetchDashboardSummary(filters.country).then(s => {
+      if (cancelled) return
+      setSummary(s)
+    }).catch(console.error)
+    return () => { cancelled = true }
+  }, [filters.country])
 
   useEffect(() => {
     if (!selected) return

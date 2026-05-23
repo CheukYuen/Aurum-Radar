@@ -81,79 +81,82 @@ def _market_from_events(
 def get_dashboard_summary(
     db: Session = Depends(get_db),
     window_days: int = Query(DEFAULT_WINDOW_DAYS, ge=1, le=365, alias="window_days"),
+    market: str | None = Query(None),
 ):
     cutoff = _window_cutoff(window_days)
+
+    def ev_q():
+        q = db.query(IntelligenceEvent).filter(IntelligenceEvent.created_at >= cutoff)
+        return q.filter(IntelligenceEvent.market == market) if market else q
+
+    def raw_q():
+        q = db.query(RawDocument).filter(RawDocument.created_at >= cutoff)
+        return q.filter(RawDocument.market == market) if market else q
+
+    def snap_q():
+        q = db.query(MarketSnapshot).filter(MarketSnapshot.created_at >= cutoff)
+        return q.filter(MarketSnapshot.market == market) if market else q
+
+    def act_q():
+        q = db.query(ActionItem).filter(ActionItem.created_at >= cutoff)
+        return q.filter(ActionItem.market == market) if market else q
+
     events_total = (
-        db.query(func.count(IntelligenceEvent.id))
-        .filter(IntelligenceEvent.created_at >= cutoff)
-        .scalar()
-        or 0
+        ev_q().with_entities(func.count(IntelligenceEvent.id)).scalar() or 0
     )
     raw_total = (
-        db.query(func.count(RawDocument.id))
-        .filter(RawDocument.created_at >= cutoff)
-        .scalar()
-        or 0
+        raw_q().with_entities(func.count(RawDocument.id)).scalar() or 0
     )
     high_priority = (
-        db.query(func.count(IntelligenceEvent.id))
+        ev_q()
         .filter(IntelligenceEvent.priority.in_(("P0", "P1", "high")))
-        .filter(IntelligenceEvent.created_at >= cutoff)
+        .with_entities(func.count(IntelligenceEvent.id))
         .scalar()
         or 0
     )
     pending_actions = (
-        db.query(func.count(ActionItem.id))
+        act_q()
         .filter(ActionItem.status.in_(("pending", "in_progress")))
-        .filter(ActionItem.created_at >= cutoff)
+        .with_entities(func.count(ActionItem.id))
         .scalar()
         or 0
     )
     latest_event_at = (
-        db.query(func.max(IntelligenceEvent.created_at))
-        .filter(IntelligenceEvent.created_at >= cutoff)
-        .scalar()
+        ev_q().with_entities(func.max(IntelligenceEvent.created_at)).scalar()
     )
     latest_snapshot_at = (
-        db.query(func.max(MarketSnapshot.created_at))
-        .filter(MarketSnapshot.created_at >= cutoff)
-        .scalar()
+        snap_q().with_entities(func.max(MarketSnapshot.created_at)).scalar()
     )
     as_of = latest_snapshot_at or latest_event_at or datetime.now(timezone.utc)
 
     markets_scanned = (
-        db.query(func.count(distinct(MarketSnapshot.market)))
-        .filter(MarketSnapshot.created_at >= cutoff)
-        .scalar()
-        or db.query(func.count(distinct(IntelligenceEvent.market)))
-        .filter(IntelligenceEvent.created_at >= cutoff)
-        .scalar()
-        or 0
+        1 if market else (
+            snap_q().with_entities(func.count(distinct(MarketSnapshot.market))).scalar()
+            or ev_q().with_entities(func.count(distinct(IntelligenceEvent.market))).scalar()
+            or 0
+        )
     )
     judgments_generated = (
-        db.query(func.count(MarketSnapshot.id))
-        .filter(MarketSnapshot.created_at >= cutoff)
-        .scalar()
-        or 0
+        snap_q().with_entities(func.count(MarketSnapshot.id)).scalar() or 0
     )
     opportunities = (
-        db.query(func.count(IntelligenceEvent.id))
+        ev_q()
         .filter(IntelligenceEvent.signal_direction == "positive")
-        .filter(IntelligenceEvent.created_at >= cutoff)
+        .with_entities(func.count(IntelligenceEvent.id))
         .scalar()
         or 0
     )
     competition = (
-        db.query(func.count(IntelligenceEvent.id))
+        ev_q()
         .filter(IntelligenceEvent.source_category == "competition")
-        .filter(IntelligenceEvent.created_at >= cutoff)
+        .with_entities(func.count(IntelligenceEvent.id))
         .scalar()
         or 0
     )
     regulation = (
-        db.query(func.count(IntelligenceEvent.id))
+        ev_q()
         .filter(IntelligenceEvent.source_category == "regulation")
-        .filter(IntelligenceEvent.created_at >= cutoff)
+        .with_entities(func.count(IntelligenceEvent.id))
         .scalar()
         or 0
     )

@@ -4,6 +4,7 @@ import IntelDetail from './IntelDetail'
 import Icon from '../ui/Icon'
 import { fetchEvents, fetchDashboardSummary } from '../../api'
 import type { DashboardSummary, IntelEvent } from '../../api'
+import type { Filters } from '../../api/types'
 
 const TABS = ['全部', '竞争', '产品', '社媒', '法规', '渠道', '宏观', '供应链']
 
@@ -39,35 +40,46 @@ function StatCard({ icon, label, value, unit, delta, deltaKind = 'sage', sub }: 
   )
 }
 
-export default function IntelPage() {
+export default function IntelPage({ filters }: { filters: Filters }) {
   const [tab, setTab] = useState('全部')
   const [events, setEvents] = useState<IntelEvent[]>([])
   const [activeId, setActiveId] = useState<string>('')
   const [summary, setSummary] = useState<DashboardSummary | null>(null)
 
   useEffect(() => {
-    fetchDashboardSummary().then(setSummary).catch(console.error)
-  }, [])
+    let cancelled = false
+    fetchDashboardSummary(filters.country).then(s => {
+      if (cancelled) return
+      setSummary(s)
+    }).catch(console.error)
+    return () => { cancelled = true }
+  }, [filters.country])
 
   useEffect(() => {
-    fetchEvents(tab).then(res => {
+    let cancelled = false
+    setActiveId('')
+    fetchEvents(tab, 1, 20, filters.country).then(res => {
+      if (cancelled) return
       setEvents(res.items)
-      if (!activeId && res.items.length > 0) setActiveId(res.items[0]!.id)
+      if (res.items.length > 0) setActiveId(res.items[0]!.id)
     }).catch(console.error)
-  }, [tab])
+    return () => { cancelled = true }
+  }, [tab, filters.country])
 
   const active = events.find(e => e.id === activeId) ?? events[0]
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '1fr 460px', gap: 18, padding: 22 }}>
+    <div className="w-full min-h-0">
+      <div className="mx-auto w-full max-w-[1440px] px-6 py-6">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_460px]">
       {/* Left */}
-      <div className="flex flex-col gap-4">
+      <div className="flex min-w-0 flex-col gap-4">
         <div>
           <h2 style={{ margin: '2px 0 4px', fontFamily: 'var(--font-serif)', fontSize: 26, fontWeight: 600 }}>情报中心</h2>
           <div style={{ fontSize: 12.5, color: 'var(--ink-3)' }}>全球珠宝行业动态与深度情报，助力把握先机与决策</div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14 }}>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <StatCard icon="feed"     label="今日新增情报"
             value={String(summary?.events_today ?? '—')} unit="条"
             sub="较昨日" delta={summary ? `+${summary.events_today_delta}` : undefined} deltaKind="sage" />
@@ -80,7 +92,7 @@ export default function IntelPage() {
         </div>
 
         <div className="flex justify-between items-center flex-wrap gap-3">
-          <div className="flex gap-1.5">
+          <div className="flex flex-wrap gap-1.5">
             {TABS.map(t => (
               <button key={t} onClick={() => setTab(t)}
                 style={{
@@ -107,12 +119,14 @@ export default function IntelPage() {
         </div>
       </div>
 
-      {/* Right detail — sticky */}
+      {/* Right detail — sticky on large screens */}
       {active && (
-        <div style={{ position: 'sticky', top: 18, maxHeight: 'calc(100vh - 140px)' }}>
+        <div className="min-w-0 lg:sticky lg:top-[18px] lg:max-h-[calc(100vh-140px)]">
           <IntelDetail e={active} onClose={() => {}} />
         </div>
       )}
+        </div>
+      </div>
     </div>
   )
 }

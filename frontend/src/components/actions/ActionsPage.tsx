@@ -4,7 +4,7 @@ import ActionDetail from './ActionDetail'
 import StrategyBoard from './StrategyBoard'
 import Icon from '../ui/Icon'
 import { fetchCouncilStrategy, fetchDepartments } from '../../api'
-import type { CouncilStrategy, Department } from '../../api/types'
+import type { CouncilStrategy, Department, Filters } from '../../api/types'
 
 function ActStat({ icon, label, value, unit, delta, deltaKind = 'sage', color }: {
   icon: string; label: string; value: string; unit: string;
@@ -49,9 +49,10 @@ function ActStat({ icon, label, value, unit, delta, deltaKind = 'sage', color }:
 interface ActionsPageProps {
   activeDept?: string
   onDeptChange?: (id: string) => void
+  filters?: Filters
 }
 
-export default function ActionsPage({ activeDept, onDeptChange }: ActionsPageProps = {}) {
+export default function ActionsPage({ activeDept, onDeptChange, filters }: ActionsPageProps = {}) {
   const [localActive, setLocalActive] = useState('mkt')
   const [departments, setDepartments] = useState<Department[]>([])
   const [strategy, setStrategy] = useState<CouncilStrategy | null>(null)
@@ -63,17 +64,25 @@ export default function ActionsPage({ activeDept, onDeptChange }: ActionsPagePro
   const pending = departments.reduce((sum, item) => sum + item.steps.length, 0)
 
   useEffect(() => {
-    fetchDepartments().then(items => {
+    let cancelled = false
+    fetchDepartments(filters?.country).then(items => {
+      if (cancelled) return
       setDepartments(items)
       if (items.length > 0 && !items.some(item => item.id === active)) {
         setActive(items[0]!.id)
       }
     }).catch(console.error)
-  }, [active])
+    return () => { cancelled = true }
+  }, [filters?.country]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    fetchCouncilStrategy().then(setStrategy).catch(console.error)
-  }, [])
+    let cancelled = false
+    fetchCouncilStrategy(filters?.country).then(s => {
+      if (cancelled) return
+      setStrategy(s)
+    }).catch(console.error)
+    return () => { cancelled = true }
+  }, [filters?.country])
 
   return (
     <div className="flex flex-col gap-4" style={{ padding: 22 }}>

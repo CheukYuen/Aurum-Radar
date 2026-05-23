@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import Icon from '../ui/Icon'
 
-const CONTEXT_CHIPS = ['今日战略简报', '新加坡市场判断', '高优先级事件', '部门行动建议']
+const CONTEXT_CHIPS = ['今日战略简报', '新加坡市场判断', '高优先级事件', '部门行动建议', '关联分析']
 
 const SUGGESTED_QUESTIONS = [
   '为什么今天新加坡被判断为机会增强？',
