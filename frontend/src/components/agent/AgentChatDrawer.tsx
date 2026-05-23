@@ -132,20 +132,22 @@ export default function AgentChatDrawer({ open, onClose, initialQuestion, curren
     const def = CHIP_DEFS.find(d => d.id === id)!
     const isSelecting = !selected.has(id)
 
-    // 联动：选 correlation → 自动选 priority
     const newSelected = new Set(selected)
     if (isSelecting) {
       newSelected.add(id)
-      if (id === 'correlation' && !newSelected.has('priority')) {
-        newSelected.add('priority')
-      }
+      // 选中 correlation → 同步选中 priority（关联分析需要事件 ID 上下文）
+      if (id === 'correlation') newSelected.add('priority')
     } else {
       newSelected.delete(id)
+      // 取消 correlation → 同步取消 priority（priority 是联动进来的）
+      if (id === 'correlation') newSelected.delete('priority')
+      // 取消 priority → 同步取消 correlation（关联分析失去事件上下文，无法继续）
+      if (id === 'priority') newSelected.delete('correlation')
     }
     setSelected(newSelected)
     setInlineError('')
 
-    // 需要拉数据且未缓存
+    // 拉当前 chip 的数据（未缓存）
     if (isSelecting && def.needsFetch && !chipCache.has(id)) {
       setChipLoading(prev => new Set([...prev, id]))
       setChipError(prev => { const s = new Set(prev); s.delete(id); return s })
@@ -160,9 +162,10 @@ export default function AgentChatDrawer({ open, onClose, initialQuestion, curren
       }
     }
 
-    // 若 priority 因 correlation 联动需要拉
-    if (isSelecting && id === 'correlation' && !chipCache.has('priority')) {
+    // 选中 correlation 时，联动拉 priority 数据（强制刷新，确保事件 ID 是最新的）
+    if (isSelecting && id === 'correlation') {
       setChipLoading(prev => new Set([...prev, 'priority']))
+      setChipError(prev => { const s = new Set(prev); s.delete('priority'); return s })
       try {
         const text = await buildChipContext('priority', currentCountry)
         setChipCache(prev => new Map([...prev, ['priority', text]]))
@@ -195,7 +198,7 @@ export default function AgentChatDrawer({ open, onClose, initialQuestion, curren
     if (agentType === 'correlation_analysis') {
       const ids = userContent.match(/#\d{1,6}/g) ?? []
       if (ids.length < 3) {
-        setInlineError('关联分析需至少 3 条事件，请先选中「高优先级事件」chip')
+        setInlineError(`关联分析需至少 3 条带 ID 的事件（当前识别到 ${ids.length} 条），请确认「高优先级事件」已加载完成`)
         return
       }
     }
