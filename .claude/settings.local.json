@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "WebFetch(domain:docs.anthropic.com)",
+      "WebFetch(domain:stevedore.readthedocs.io)",
+      "WebFetch(domain:docs.openstack.org)",
+      "Bash(pip3 show *)",
+      "Bash(pip3 install *)",
+      "Bash(python3.11 *)"
+    ]
+  }
+}
