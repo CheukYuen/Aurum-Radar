@@ -9,6 +9,7 @@ from app.api import routes_health, routes_dashboard, routes_events, routes_brief
 from app.services.skills.registry import get_skill_registry
 from app.agents.router import get_agent_router
 from app.agents.correlation_agent import IntelligenceCorrelationAgent
+from app.agents.session import get_session_manager
 
 
 @asynccontextmanager
@@ -20,6 +21,8 @@ async def lifespan(app: FastAPI):
     agent_router = get_agent_router()
     agent_router.register(IntelligenceCorrelationAgent())
     app.state.agent_router = agent_router
+
+    app.state.session_manager = get_session_manager()
 
     logger.info("[app] startup complete")
     yield
