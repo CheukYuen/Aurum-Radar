@@ -128,7 +128,7 @@ intelligence layer. Targets: **JP / KR / SG / TH / MY / VN / ID / PH / US**.
 python scripts/run_all.py                       # original 6 SG probes (default, unchanged)
 python scripts/run_all.py --global              # SG + 5 global probes
 python scripts/run_all.py --only-global         # only global probes
-python scripts/run_all.py --global --include reddit,trends   # add opt-in social/trend
+python scripts/run_all.py --global --include reddit,trends,baidu   # add opt-in social/trend
 ```
 
 Each global probe is also runnable on its own:
@@ -141,6 +141,7 @@ python scripts/probe_ecommerce.py
 python scripts/probe_tavily.py
 python scripts/probe_reddit.py   # opt-in
 python scripts/probe_trends.py   # opt-in
+python scripts/probe_baidu_index.py   # opt-in, records JS/login access boundary
 ```
 
 ### Implemented (MVP)
@@ -159,6 +160,7 @@ python scripts/probe_trends.py   # opt-in
 |---|---|---|
 | `probe_reddit` | `praw` + `REDDIT_CLIENT_ID/SECRET/USER_AGENT` | skipped |
 | `probe_trends` | `pytrends` | skipped |
+| `probe_baidu_index` | Baidu Index browser login / official access for real time series | failed placeholder |
 
 ### Registry-only
 
