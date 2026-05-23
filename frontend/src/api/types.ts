@@ -1,9 +1,7 @@
 export type PageId = 'overview' | 'intel' | 'actions'
 
 export interface Filters {
-  time: string
-  region: string
-  category: string
+  country: string
 }
 
 // ── Overview types ──────────────────────────────────────────────

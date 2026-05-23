@@ -151,7 +151,7 @@ export default function MapInsightPage({ filters }: { filters: Filters }) {
   const [regions, setRegions] = useState<SgRegion[]>([])
   const [selected, setSelected] = useState('')
   const [detail, setDetail] = useState<RegionDetail | null>(null)
-  const market = filters.region === '全球' || filters.region === '亚太' ? 'Singapore' : filters.region
+  const market = filters.country
   const regionName = detail?.name ?? regions.find(region => region.id === selected)?.name ?? ''
 
   useEffect(() => {
@@ -200,7 +200,7 @@ export default function MapInsightPage({ filters }: { filters: Filters }) {
             <h3 className="facet-rule" style={{ margin: 0, fontFamily: 'var(--font-serif)', fontSize: 18, fontWeight: 600 }}>地图洞察</h3>
             <div className="flex gap-2 items-center" style={{ fontSize: 12, color: 'var(--ink-3)' }}>
               <span>当前国家:</span>
-              <span className="chip sage">{filters.region === '全球' ? '新加坡' : filters.region}</span>
+              <span className="chip sage">{filters.country}</span>
               <span style={{ marginLeft: 10 }}>当前选中区域:</span>
               <span className="chip gold">{regionName}</span>
             </div>

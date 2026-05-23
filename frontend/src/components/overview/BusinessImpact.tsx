@@ -24,7 +24,7 @@ export default function BusinessImpact({ detail, onAct }: { detail?: CountryDeta
         <h3 className="facet-rule" style={{ margin: 0, fontFamily: 'var(--font-serif)', fontSize: 18, fontWeight: 600 }}>业务影响与建议</h3>
         <span style={{ fontSize: 11, color: 'var(--ink-3)' }}>基于当前国家 · {detail?.name ?? '—'}</span>
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14 }}>
+      <div className="flex flex-col gap-4">
         {blocks.map((b, i) => {
           const bg = b.kind === 'sage'
             ? 'linear-gradient(180deg, var(--sage-tint), rgba(228,236,224,.4))'
@@ -38,28 +38,31 @@ export default function BusinessImpact({ detail, onAct }: { detail?: CountryDeta
             ? 'var(--sage-deep)' : b.kind === 'clay'
             ? 'var(--clay-deep)' : 'var(--ink-2)'
           return (
-            <div key={i} style={{ padding: 16, background: bg, border: `1px solid ${border}`, borderRadius: 12 }}>
-              <div className="flex items-center gap-2" style={{ marginBottom: 10, color: textColor }}>
-                <Icon name={b.icon} size={15} />
-                <span style={{ fontFamily: 'var(--font-serif)', fontSize: 16, fontWeight: 600 }}>{b.title}</span>
+            <div key={i} className="min-w-0" style={{ padding: '14px 16px', background: bg, border: `1px solid ${border}`, borderRadius: 12 }}>
+              <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:gap-3">
+                <div className="flex shrink-0 items-center gap-2 sm:w-[72px]" style={{ color: textColor }}>
+                  <Icon name={b.icon} size={15} />
+                  <span style={{ fontFamily: 'var(--font-serif)', fontSize: 16, fontWeight: 600 }}>{b.title}</span>
+                </div>
+                <ul className="min-w-0 flex-1" style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {(b.items.length > 0 ? b.items : ['暂无数据']).map((t, j) => (
+                    <li key={j} className="min-w-0 break-words" style={{ fontSize: 13, color: 'var(--ink-2)', display: 'flex', gap: 8, lineHeight: 1.55 }}>
+                      <span style={{ width: 4, height: 4, borderRadius: 4, background: 'currentColor', marginTop: 8, flexShrink: 0, opacity: .6 }} />
+                      <span className="min-w-0 flex-1">{t}</span>
+                    </li>
+                  ))}
+                </ul>
               </div>
-              <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {(b.items.length > 0 ? b.items : ['暂无数据']).map((t, j) => (
-                  <li key={j} style={{ fontSize: 13, color: 'var(--ink-2)', display: 'flex', gap: 8, lineHeight: 1.5 }}>
-                    <span style={{ width: 4, height: 4, borderRadius: 4, background: 'currentColor', marginTop: 8, flexShrink: 0, opacity: .6 }} />
-                    {t}
-                  </li>
-                ))}
-              </ul>
               <button onClick={() => onAct('actions')}
+                className="sm:ml-[84px]"
                 style={{
-                  marginTop: 14, width: '100%',
-                  padding: '9px 12px',
+                  marginTop: 12,
+                  padding: '8px 14px',
                   background: 'var(--pearl)',
                   border: `1px solid ${border.replace('.3)', '.4)').replace('.4)', '.5)')}`,
                   color: b.kind === 'sage' ? 'var(--sage-deep)' : b.kind === 'clay' ? 'var(--clay-deep)' : 'var(--gold-2)',
                   borderRadius: 9, fontSize: 12.5, fontWeight: 600,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                  display: 'inline-flex', alignItems: 'center', gap: 6,
                 }}>
                 → {b.cta}
               </button>

@@ -8,7 +8,13 @@
       "Bash(pip3 show *)",
       "Bash(pip3 install *)",
       "Bash(python3.11 *)",
-      "Bash(/Users/qinzhanqun/PycharmProjects/Aurum-Radar/.venv/bin/python *)"
+      "Bash(/Users/qinzhanqun/PycharmProjects/Aurum-Radar/.venv/bin/python *)",
+      "Bash(.venv/bin/uvicorn app.main:app --reload --port 8000)",
+      "Bash(echo \"PID=$!\")",
+      "Bash(curl -s http://localhost:8000/api/health)",
+      "Bash(kill 55929)",
+      "Bash(.venv/bin/pip install *)",
+      "Bash(.venv/bin/python -m pip install -r requirements.txt -q)"
     ]
   }
 }

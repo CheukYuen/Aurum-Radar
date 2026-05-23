@@ -4,11 +4,11 @@ import CountryPanel from './CountryPanel'
 import KeyAnalysis from './KeyAnalysis'
 import BusinessImpact from './BusinessImpact'
 import Icon from '../ui/Icon'
-import { fetchCountries, fetchCountryDetail, fetchDashboardSummary } from '../../api'
-import type { CountryDetail, CountryNode, PageId } from '../../api/types'
+import { fetchCountryDetail, fetchDashboardSummary } from '../../api'
+import type { CountryDetail, CountryNode, Filters, PageId } from '../../api/types'
 import type { DashboardSummary } from '../../api'
 
-function AiRadarStrip({ summary, onOpenBriefing }: { summary: DashboardSummary | null; onOpenBriefing: () => void }) {
+function AiRadarStrip({ summary }: { summary: DashboardSummary | null }) {
   const stats = [
     { label: '今日已扫描市场', value: summary ? String(summary.radar.markets_scanned) : '—', unit: '个' },
     { label: '整合公开信息',   value: summary ? summary.radar.documents_integrated.toLocaleString() : '—', unit: '条' },
@@ -56,7 +56,7 @@ function AiRadarStrip({ summary, onOpenBriefing }: { summary: DashboardSummary |
         ))}
       </div>
 
-      {/* Timestamp + window chip + briefing button */}
+      {/* Timestamp + window chip */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, paddingLeft: 16, borderLeft: '1px solid var(--line-strong)', flexShrink: 0 }}>
         <div style={{
           padding: '3px 9px', borderRadius: 999,
@@ -72,36 +72,28 @@ function AiRadarStrip({ summary, onOpenBriefing }: { summary: DashboardSummary |
             {summary?.as_of ? new Date(summary.as_of).toLocaleString('zh-CN', { hour12: false }) : '—'}
           </div>
         </div>
-        <button onClick={onOpenBriefing} style={{
-          display: 'flex', alignItems: 'center', gap: 6,
-          padding: '8px 14px', flexShrink: 0,
-          background: 'var(--pearl)',
-          border: '1px solid var(--line-strong)',
-          borderRadius: 9, fontSize: 12, fontWeight: 700, color: 'var(--gold-2)',
-          boxShadow: 'var(--shadow-sm)',
-        }}>
-          战略简报
-          <Icon name="right" size={12} />
-        </button>
       </div>
     </div>
   )
 }
 
-export default function OverviewPage({ onNav, onOpenBriefing }: { onNav: (id: PageId) => void; onOpenBriefing: () => void }) {
-  const [selected, setSelected] = useState('SG')
-  const [countries, setCountries] = useState<CountryNode[]>([])
+export default function OverviewPage({
+  onNav,
+  filters,
+  countries,
+  onCountryChange,
+}: {
+  onNav: (id: PageId) => void
+  filters: Filters
+  countries: CountryNode[]
+  onCountryChange: (id: string) => void
+}) {
+  const selected = filters.country
   const [countryDetail, setCountryDetail] = useState<CountryDetail | null>(null)
   const [summary, setSummary] = useState<DashboardSummary | null>(null)
 
   useEffect(() => {
     fetchDashboardSummary().then(setSummary).catch(console.error)
-    fetchCountries().then(items => {
-      setCountries(items)
-      // Prefer SG as the landing market; fall back to whatever the backend returns first
-      const preferred = items.find(item => item.id === 'SG') ?? items[0]
-      if (preferred) setSelected(preferred.id)
-    }).catch(console.error)
   }, [])
 
   useEffect(() => {
@@ -113,18 +105,14 @@ export default function OverviewPage({ onNav, onOpenBriefing }: { onNav: (id: Pa
   }, [selected])
 
   return (
-    <div style={{
-      display: 'grid',
-      gridTemplateColumns: '1fr 420px',
-      gridTemplateRows: 'auto auto',
-      gap: 18,
-      padding: 22,
-      minHeight: 0,
-    }}>
-      {/* Main map */}
-      <div className="card" style={{ padding: 20, gridColumn: '1 / 2', gridRow: '1 / 2' }}>
+    <div className="w-full min-h-0">
+      <div className="mx-auto w-full max-w-[1440px] px-6 py-6">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_420px]">
+          {/* Left column: map + analysis stacked */}
+          <div className="flex min-w-0 flex-col gap-6">
+            <div className="card min-w-0" style={{ padding: 20 }}>
         {/* AI Radar strip */}
-        <AiRadarStrip summary={summary} onOpenBriefing={onOpenBriefing} />
+        <AiRadarStrip summary={summary} />
 
         <div className="flex justify-between items-center flex-wrap" style={{ marginBottom: 14, gap: 10 }}>
           <div className="flex items-center gap-3">
@@ -150,7 +138,7 @@ export default function OverviewPage({ onNav, onOpenBriefing }: { onNav: (id: Pa
           </div>
         </div>
         <div style={{ position: 'relative', borderRadius: 12, overflow: 'hidden', border: '1px solid var(--line-soft)', background: 'linear-gradient(135deg, var(--pearl-warm), var(--ivory))' }}>
-          <WorldMap selected={selected} countries={countries} onSelect={setSelected} />
+          <WorldMap selected={selected} countries={countries} onSelect={onCountryChange} />
           <div style={{
             position: 'absolute', left: 18, bottom: 18,
             padding: '10px 14px',
@@ -166,17 +154,17 @@ export default function OverviewPage({ onNav, onOpenBriefing }: { onNav: (id: Pa
             <span>点击地图国家，右侧刷新 Agent 今日市场判断</span>
           </div>
         </div>
-      </div>
+            </div>
 
-      {/* Right country panel — spans both rows */}
-      <div style={{ gridColumn: '2 / 3', gridRow: '1 / 3' }}>
-        <CountryPanel detail={countryDetail} onJumpToMap={onNav} />
-      </div>
+            <KeyAnalysis summary={summary} onCard={onNav} />
+            <BusinessImpact detail={countryDetail} onAct={onNav} />
+          </div>
 
-      {/* Bottom row */}
-      <div style={{ gridColumn: '1 / 2', gridRow: '2 / 3', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-        <KeyAnalysis summary={summary} onCard={onNav} />
-        <BusinessImpact detail={countryDetail} onAct={onNav} />
+          {/* Right column: country panel */}
+          <div className="min-w-0 h-full">
+            <CountryPanel detail={countryDetail} onJumpToMap={onNav} />
+          </div>
+        </div>
       </div>
     </div>
   )

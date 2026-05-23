@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import DiamondMark from '../ui/DiamondMark'
 import Icon from '../ui/Icon'
-import { fetchJobsStatus } from '../../api'
-import type { Filters } from '../../api/types'
+import { fetchJobsStatus, getMarketDisplayName } from '../../api'
+import type { CountryNode, Filters, StatusKind } from '../../api/types'
 
 // ── Agent status bar (top thin strip) ───────────────────────────
 
@@ -64,42 +64,257 @@ function AgentBar({ onOpenBriefing }: { onOpenBriefing: () => void }) {
 
 // ── Filter pill ──────────────────────────────────────────────────
 
+const HEADER_CONTROL_H = 46
+
+function formatDate(d: Date) {
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}/${m}/${day}`
+}
+
+function getLast30DaysRange() {
+  const end = new Date()
+  const start = new Date()
+  start.setDate(end.getDate() - 29)
+  return {
+    label: '最近 30 天',
+    range: `${formatDate(start)} – ${formatDate(end)}`,
+  }
+}
+
 interface FilterPillProps {
   icon: string
   label: string
   value: string
-  onClick: () => void
+  subValue?: string
+  onClick?: (event: React.MouseEvent) => void
+  readOnly?: boolean
+  readOnlyTitle?: string
+  open?: boolean
 }
 
-function FilterPill({ icon, label, value, onClick }: FilterPillProps) {
-  return (
-    <button onClick={onClick}
-      style={{
-        display: 'flex', alignItems: 'center', gap: 10,
-        padding: '8px 16px',
-        background: 'var(--pearl)',
-        border: '1px solid var(--line)',
-        borderRadius: 12,
-        boxShadow: 'var(--shadow-sm), var(--shadow-inner)',
-        minWidth: 190, textAlign: 'left',
-        transition: 'all .15s ease',
-      }}
-      onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--line-strong)')}
-      onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--line)')}>
+function FilterPill({ icon, label, value, subValue, onClick, readOnly, readOnlyTitle, open }: FilterPillProps) {
+  const sharedStyle: React.CSSProperties = {
+    display: 'flex', alignItems: 'center', gap: 10,
+    height: HEADER_CONTROL_H,
+    boxSizing: 'border-box',
+    padding: '0 16px',
+    background: 'var(--pearl)',
+    border: '1px solid var(--line)',
+    borderRadius: 12,
+    boxShadow: 'var(--shadow-sm), var(--shadow-inner)',
+    minWidth: 190, textAlign: 'left',
+    cursor: readOnly ? 'default' : 'pointer',
+    transition: readOnly ? 'none' : 'all .15s ease',
+  }
+
+  const content = (
+    <>
       <span style={{
-        width: 28, height: 28, borderRadius: 7,
+        width: 28, height: 28, borderRadius: 7, flexShrink: 0,
         background: 'var(--gold-wash)',
         display: 'grid', placeItems: 'center',
-        color: 'var(--gold-2)', border: '1px solid var(--line-soft)',
+        color: 'var(--gold-2)',
+        border: '1px solid var(--line-soft)',
       }}>
         <Icon name={icon} size={14} />
       </span>
-      <span style={{ flex: 1, lineHeight: 1.2 }}>
+      <span style={{ flex: 1, lineHeight: 1.2, minWidth: 0 }}>
         <div style={{ fontSize: 10.5, color: 'var(--ink-3)', letterSpacing: '.06em' }}>{label}</div>
-        <div style={{ fontSize: 13, color: 'var(--ink-1)', fontWeight: 600 }}>{value}</div>
+        <div style={{ fontSize: 13, color: 'var(--ink-1)', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          {value}
+          {subValue && (
+            <span style={{ fontSize: 11, color: 'var(--ink-4)', fontWeight: 500, fontFamily: 'var(--font-mono)', marginLeft: 6 }}>{subValue}</span>
+          )}
+        </div>
       </span>
-      <Icon name="chevron" size={13} style={{ color: 'var(--ink-4)' }} />
+      {!readOnly && (
+        <Icon name="chevron" size={13} style={{
+          color: 'var(--ink-4)',
+          transform: open ? 'rotate(180deg)' : 'none',
+          transition: 'transform .15s ease',
+        }} />
+      )}
+    </>
+  )
+
+  if (readOnly) {
+    return (
+      <div style={sharedStyle} title={readOnlyTitle}>
+        {content}
+      </div>
+    )
+  }
+
+  return (
+    <button onClick={onClick}
+      style={{
+        ...sharedStyle,
+        borderColor: open ? 'var(--line-strong)' : 'var(--line)',
+      }}
+      onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--line-strong)')}
+      onMouseLeave={e => (e.currentTarget.style.borderColor = open ? 'var(--line-strong)' : 'var(--line)')}>
+      {content}
     </button>
+  )
+}
+
+const STATUS_META: Record<StatusKind, { color: string; label: string }> = {
+  high:        { color: '#7A9D7E', label: '机会增强' },
+  mid:         { color: '#C8A569', label: '需持续观察' },
+  risk:        { color: '#C97F6E', label: '风险升温' },
+  competition: { color: '#5B88B0', label: '竞争加剧' },
+  regulation:  { color: '#6B7A9E', label: '法规变化' },
+  watch:       { color: '#A89776', label: '需持续观察' },
+}
+
+function CountryFilterPill({
+  value,
+  countries,
+  onChange,
+}: {
+  value: string
+  countries: CountryNode[]
+  onChange: (id: string) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const rootRef = useRef<HTMLDivElement>(null)
+  const selected = countries.find(c => c.id === value)
+  const displayName = selected?.name ?? getMarketDisplayName(value)
+
+  useEffect(() => {
+    if (!open) return
+
+    const onDocumentClick = (event: MouseEvent) => {
+      if (rootRef.current && !rootRef.current.contains(event.target as Node)) {
+        setOpen(false)
+      }
+    }
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setOpen(false)
+    }
+
+    const timer = window.setTimeout(() => {
+      document.addEventListener('click', onDocumentClick)
+    }, 0)
+    document.addEventListener('keydown', onKeyDown)
+
+    return () => {
+      window.clearTimeout(timer)
+      document.removeEventListener('click', onDocumentClick)
+      document.removeEventListener('keydown', onKeyDown)
+    }
+  }, [open])
+
+  const pick = (id: string) => {
+    onChange(id)
+    setOpen(false)
+  }
+
+  const toggleOpen = (event: React.MouseEvent) => {
+    event.stopPropagation()
+    setOpen(v => !v)
+  }
+
+  return (
+    <div ref={rootRef} style={{ position: 'relative' }}>
+      <FilterPill
+        icon="globe"
+        label="地区 / REGION"
+        value={displayName}
+        subValue={selected && selected.name !== selected.sub ? selected.sub : undefined}
+        open={open}
+        onClick={toggleOpen}
+      />
+
+      {open && (
+        <div
+          onMouseDown={event => event.stopPropagation()}
+          style={{
+          position: 'absolute',
+          top: 'calc(100% + 8px)',
+          right: 0,
+          width: 280,
+          padding: 8,
+          background: 'var(--pearl)',
+          border: '1px solid var(--line-strong)',
+          borderRadius: 14,
+          boxShadow: 'var(--shadow-lg)',
+          zIndex: 30,
+        }}>
+          <div style={{
+            padding: '6px 10px 8px',
+            fontSize: 10.5,
+            letterSpacing: '.08em',
+            textTransform: 'uppercase',
+            color: 'var(--ink-4)',
+            fontWeight: 700,
+          }}>
+            选择国家 / 地区
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 320, overflowY: 'auto' }}>
+            {countries.length === 0 ? (
+              <div style={{ padding: '12px 10px', fontSize: 12.5, color: 'var(--ink-4)' }}>加载市场中…</div>
+            ) : countries.map(country => {
+              const active = country.id === value
+              const status = STATUS_META[country.status]
+              return (
+                <button
+                  key={country.id}
+                  type="button"
+                  onMouseDown={event => {
+                    event.preventDefault()
+                    event.stopPropagation()
+                    pick(country.id)
+                  }}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 10,
+                    width: '100%',
+                    padding: '10px 12px',
+                    borderRadius: 10,
+                    border: active ? '1px solid rgba(200,165,105,.45)' : '1px solid transparent',
+                    background: active ? 'var(--gold-wash)' : 'transparent',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    transition: 'background .12s ease, border-color .12s ease',
+                  }}
+                  onMouseEnter={e => {
+                    if (!active) e.currentTarget.style.background = 'var(--ivory)'
+                  }}
+                  onMouseLeave={e => {
+                    if (!active) e.currentTarget.style.background = 'transparent'
+                  }}
+                >
+                  <span style={{
+                    width: 8,
+                    height: 8,
+                    borderRadius: 8,
+                    background: status.color,
+                    boxShadow: `0 0 0 2px rgba(255,252,244,.85), 0 0 0 3px ${status.color}30`,
+                    flexShrink: 0,
+                  }} />
+                  <span style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--ink-1)' }}>{country.name}</div>
+                    <div style={{ fontSize: 11, color: 'var(--ink-4)', marginTop: 1, fontFamily: 'var(--font-mono)' }}>{country.sub}</div>
+                  </span>
+                  <span style={{
+                    fontSize: 10.5,
+                    fontWeight: 700,
+                    color: status.color,
+                    flexShrink: 0,
+                  }}>{status.label}</span>
+                  {active && <Icon name="check" size={14} style={{ color: 'var(--gold-2)', flexShrink: 0 }} />}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -107,12 +322,15 @@ function FilterPill({ icon, label, value, onClick }: FilterPillProps) {
 
 interface TopBarProps {
   filters: Filters
-  setFilters: React.Dispatch<React.SetStateAction<Filters>>
+  countries: CountryNode[]
+  onCountryChange: (id: string) => void
   onOpenBriefing: () => void
   onOpenAgentChat: () => void
 }
 
-export default function TopBar({ filters, setFilters, onOpenBriefing, onOpenAgentChat }: TopBarProps) {
+export default function TopBar({ filters, countries, onCountryChange, onOpenBriefing, onOpenAgentChat }: TopBarProps) {
+  const timeRange = getLast30DaysRange()
+
   return (
     <header style={{ borderBottom: '1px solid var(--line-soft)', position: 'relative', zIndex: 5 }}>
       {/* Thin agent status bar */}
@@ -145,24 +363,22 @@ export default function TopBar({ filters, setFilters, onOpenBriefing, onOpenAgen
         {/* Right: Filters + CTA */}
         <div className="flex items-center gap-3">
           <FilterPill icon="calendar" label="时间 / TIME"
-            value={filters.time}
-            onClick={() => setFilters(f => ({
-              ...f,
-              time: f.time === '2026/05/01 – 2026/05/31'
-                ? '2026/04/01 – 2026/04/30'
-                : '2026/05/01 – 2026/05/31',
-            }))} />
-          <FilterPill icon="globe" label="地区 / REGION"
-            value={filters.region}
-            onClick={() => setFilters(f => ({ ...f, region: f.region === '全球' ? '亚太' : '全球' }))} />
-          <FilterPill icon="tag" label="品类 / CATEGORY"
-            value={filters.category}
-            onClick={() => setFilters(f => ({ ...f, category: f.category === '全部品类' ? '高端品类' : '全部品类' }))} />
+            value={timeRange.label}
+            subValue={timeRange.range}
+            readOnly
+            readOnlyTitle="时间范围固定为最近 30 天，不可修改" />
+          <CountryFilterPill
+            value={filters.country}
+            countries={countries}
+            onChange={onCountryChange}
+          />
 
           {/* Ask Agent button */}
           <button onClick={onOpenAgentChat} style={{
             display: 'flex', alignItems: 'center', gap: 7,
-            padding: '10px 16px',
+            height: HEADER_CONTROL_H,
+            boxSizing: 'border-box',
+            padding: '0 16px',
             background: 'var(--pearl)',
             border: '1px solid var(--line-strong)',
             borderRadius: 12,
@@ -182,7 +398,9 @@ export default function TopBar({ filters, setFilters, onOpenBriefing, onOpenAgen
           {/* Gold CTA */}
           <button onClick={onOpenBriefing} style={{
             display: 'flex', alignItems: 'center', gap: 8,
-            padding: '10px 20px',
+            height: HEADER_CONTROL_H,
+            boxSizing: 'border-box',
+            padding: '0 20px',
             background: 'linear-gradient(135deg, var(--gold-1), var(--gold-2))',
             border: '1px solid var(--gold-2)',
             borderRadius: 12,

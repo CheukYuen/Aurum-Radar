@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import TopBar from './components/shell/TopBar'
 import Sidebar from './components/shell/Sidebar'
 import OverviewPage from './components/overview/OverviewPage'
@@ -6,20 +6,35 @@ import IntelPage from './components/intel/IntelPage'
 import ActionsPage from './components/actions/ActionsPage'
 import DailyBriefingDrawer from './components/overview/DailyBriefingDrawer'
 import AgentChatDrawer from './components/agent/AgentChatDrawer'
-import type { Filters, PageId } from './api/types'
+import { fetchCountries, normalizeMarketId } from './api'
+import type { CountryNode, Filters, PageId } from './api/types'
 
 export default function App() {
   const [page, setPage] = useState<PageId>('overview')
   const [filters, setFilters] = useState<Filters>({
-    time: '2026/05/01 – 2026/05/31',
-    region: '全球',
-    category: '全部品类',
+    country: 'SG',
   })
+  const [countries, setCountries] = useState<CountryNode[]>([])
   const [briefingOpen, setBriefingOpen] = useState(false)
   const [agentChatOpen, setAgentChatOpen] = useState(false)
   const [agentChatQuestion, setAgentChatQuestion] = useState<string | undefined>()
   const [agentChatKey, setAgentChatKey] = useState(0)
   const [activeDept, setActiveDept] = useState('')
+
+  useEffect(() => {
+    fetchCountries().then(items => {
+      setCountries(items)
+      setFilters(f => {
+        if (items.some(item => item.id === f.country)) return f
+        const preferred = items.find(item => item.id === 'SG') ?? items[0]
+        return preferred ? { ...f, country: preferred.id } : f
+      })
+    }).catch(console.error)
+  }, [])
+
+  const handleCountryChange = (id: string) => {
+    setFilters(f => ({ ...f, country: normalizeMarketId(id) }))
+  }
 
   const handleNav = (id: PageId) => setPage(id)
 
@@ -36,7 +51,14 @@ export default function App() {
   }
 
   const PageComp = {
-    overview: <OverviewPage onNav={handleNav} onOpenBriefing={openBriefing} />,
+    overview: (
+      <OverviewPage
+        onNav={handleNav}
+        filters={filters}
+        countries={countries}
+        onCountryChange={handleCountryChange}
+      />
+    ),
     intel:    <IntelPage />,
     actions:  <ActionsPage activeDept={activeDept} onDeptChange={setActiveDept} />,
   }[page]
@@ -45,7 +67,8 @@ export default function App() {
     <div className="flex flex-col" style={{ minHeight: '100vh' }}>
       <TopBar
         filters={filters}
-        setFilters={setFilters}
+        countries={countries}
+        onCountryChange={handleCountryChange}
         onOpenBriefing={openBriefing}
         onOpenAgentChat={() => openAgentChat()}
       />

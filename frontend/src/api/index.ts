@@ -259,8 +259,16 @@ function normalizeMarket(value: string): string {
   return MARKET_ALIASES[trimmed.toLowerCase()] ?? MARKET_ALIASES[trimmed] ?? trimmed
 }
 
+export function normalizeMarketId(value: string): string {
+  return normalizeMarket(value)
+}
+
 function marketName(market: string): string {
   return MARKET_LAYOUT[market]?.name ?? market
+}
+
+export function getMarketDisplayName(market: string): string {
+  return marketName(normalizeMarket(market))
 }
 
 function marketStatus(opportunity: number, risk: number): { status: StatusKind; label: string; tone: ChipTone } {
@@ -456,7 +464,7 @@ export async function fetchDashboardSummary(): Promise<DashboardSummary> {
 }
 
 function mapCountry(raw: JsonRecord): CountryNode {
-  const market = str(raw.market)
+  const market = normalizeMarket(str(raw.market))
   const opportunity = num(raw.opportunity_score)
   const risk = num(raw.risk_score)
   const layout = MARKET_LAYOUT[market] ?? { name: market, x: 1120, y: 360, size: 13 }
@@ -541,7 +549,7 @@ function mapRegion(raw: JsonRecord): SgRegion {
   }
 }
 
-export async function fetchSgRegions(market = 'Singapore'): Promise<SgRegion[]> {
+export async function fetchSgRegions(market = 'SG'): Promise<SgRegion[]> {
   const raw = await get<{ items: JsonRecord[] } | JsonRecord[]>(`/markets/${encodeURIComponent(normalizeMarket(market))}/districts`)
   const items = Array.isArray(raw) ? raw : raw.items
   return items.map(mapRegion)

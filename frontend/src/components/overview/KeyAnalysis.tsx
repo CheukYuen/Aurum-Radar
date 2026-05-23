@@ -48,10 +48,10 @@ export default function KeyAnalysis({ summary, onCard }: { summary: DashboardSum
           <Icon name="info" size={12} /> 点击卡片 → 进入情报中心
         </span>
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14 }}>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {items.map((it, i) => (
           <button key={i} onClick={() => onCard('intel')}
-            className="card-hover"
+            className="card-hover min-h-[150px] min-w-0"
             style={{
               padding: 16, textAlign: 'left',
               background: 'var(--ivory)',
