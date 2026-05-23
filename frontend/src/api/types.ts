@@ -169,7 +169,12 @@ export interface DeptStep {
 
 export interface DeptRef {
   icon: string
-  text: string
+  text: string                      // 用户可见的主标题（事件标题 / 策略+渠道）
+  detail?: string                   // 副标题（来源 / key_claim）
+  sourceUrl?: string                // 可点击外链；为空则不可点击
+  eventId?: string                  // 跳转到情报详情用
+  factorLabel?: string              // 主因子（如「需求迁移」）
+  factorId?: EnvFactorId            // F1-F7
 }
 
 export interface DeptSummaryItem {
