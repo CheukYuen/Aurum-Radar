@@ -1,10 +1,10 @@
 # Aurum Radar — Global Agent Chat 设计方案
 
-> 版本：v1.1 | 日期：2026-05-23 | 状态：进行中
+> 版本：v1.2 | 日期：2026-05-23 | 状态：进行中
 
 **职责划分：**
 - 本文档负责人：Global Agent Chat（后端 API + 前端 ChatDrawer）
-- 上游依赖：管道 Stage 3-7 落库，由另一同事负责，Agent Chat 等其交付后接入
+- 上游依赖：管道 Stage 3-7 落库，由另一同事负责（TH 市场已完成）
 
 ---
 
@@ -25,22 +25,18 @@
 
 ## 0. 前置依赖与交接契约
 
-### 0.1 当前数据库状态（2026-05-23）
+### 0.1 当前数据库状态（2026-05-23 已核实）
 
 | 表 | 行数 | 说明 |
 |----|------|------|
-| `raw_documents` | 1482 | ✅ 已落库，Tavily/GDELT/Google News/Reddit 等来源 |
-| `intelligence_events` | 0 | ❌ 等待同事运行 Stage 3-4 |
-| `market_snapshots` | 0 | ❌ 等待同事运行 Stage 5 |
-| `daily_briefs` | 0 | ❌ 等待同事运行 Stage 6 |
-| `council_reports` | 0 | ❌ 等待同事运行 Stage 7 |
-| `action_items` | 0 | ❌ 等待同事运行 Stage 7 |
+| `raw_documents` | 1487 | ✅ SG/JP/TH/MY/KR/VN/PH/ID/US/CN，Tavily/GDELT/Google News/Reddit 等来源 |
+| `intelligence_events` | **14** | ✅ TH 市场，P0×3 / P1×9 / P2×2 |
+| `market_snapshots` | **1** | ✅ TH，opp=28 / risk=26 |
+| `daily_briefs` | **1** | ✅ TH，2026-05-23 |
+| `council_reports` | **1** | ✅ TH，5份专家报告 + 综合判断 |
+| `action_items` | **7** | ✅ TH，P0×6 + P1×1，全部 pending |
 
-**管道命令（同事负责执行）：**
-```bash
-cd backend
-python scripts/run_pipeline.py --markets SG JP TH --stages 3 4 5 6 7
-```
+**覆盖市场：目前仅 TH（泰国），SG/JP 等市场待同事继续落库。**
 
 ### 0.2 交接契约
 
@@ -56,11 +52,7 @@ Agent Chat 依赖以下表结构，**不修改这些表，只读取**：
 
 ### 0.3 开发策略
 
-在同事完成落库之前，Agent Chat 的开发按以下策略推进：
-
-1. **后端**：context_builder 全部写完，但当表为空时返回 `None`（graceful degradation），prompt_builder 对空字段跳过对应章节而不报错
-2. **前端**：ChatDrawer 完整实现，空数据时展示占位提示 "今日情报数据处理中，请稍后"
-3. **联调**：同事落库后，直接接入，无需改代码
+TH 市场数据已就绪，可直接开发并真实联调。其他市场（SG/JP）待同事继续落库，context_builder 对空表 graceful degradation（返回 None / []，prompt_builder 跳过对应章节）。
 
 ---
 
@@ -283,45 +275,266 @@ class AgentContextBuilder:
 
 #### `prompt_builder.py`
 
+system prompt 分两层：**模板（代码中定义）** + **运行时填充（从 DB 注入）**。
+
 ```python
 SYSTEM_PROMPT_TEMPLATE = """
-你是 Aurum Radar 的战略情报助理，服务于珠宝品牌的战略决策团队。
+你是 Aurum Radar 的战略情报助理，服务于周大福珠宝品牌的战略决策团队。
+你的职责是围绕每日战略简报，解释判断依据、追问信号、推导行动建议。
+你只能基于以下注入的今日情报上下文作答，不得超出范围臆测。
 
-## 当前情报上下文（{brief_date}）
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+## 今日战略简报（{brief_date} · {markets}）
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-### 今日战略简报摘要
-{brief_summary}
+### 综合研判
+{brief_executive_summary}
 
-### 市场判断快照
-{market_snapshots}
+### 机会信号
+{brief_opportunities}
 
-### 高优先级情报事件（P0/P1）
-{top_events_json}
+### 风险信号
+{brief_risks}
 
-### 当前行动建议
-{action_items_json}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+## 市场快照（{snapshot_market} · opp={opp_score} / risk={risk_score}）
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-### 专家委员会核心判断
+{snapshot_judgement}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+## 专家委员会核心判断（置信度：{council_confidence}）
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+### 综合研判
 {council_summary}
 
-## 你的回答规范
-每次回答必须包含以下结构（JSON）：
+### 关键信号
+{council_key_signals}
+
+### 战略选项
+{council_strategic_options}
+
+### 专家分歧
+{council_disagreements}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+## 高优先级情报事件
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+{top_events}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+## 当前行动建议
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+{action_items}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+## 回答规范
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+每次回答必须以 JSON 格式输出：
 {{
   "conclusion": "直接结论（2-3句）",
-  "reasoning": "判断依据（引用具体事件和信号）",
-  "evidence_ids": ["intel-001", ...],
-  "sources": [{{"title": "...", "url": "...", "credibility": "A"}}],
+  "reasoning": "判断依据（引用具体事件 #id）",
+  "evidence_ids": [44, 45],
+  "sources": [{{"title": "...", "url": "...", "credibility": "S|A|B|C"}}],
   "next_steps": ["具体建议1", "具体建议2"],
-  "related_action_ids": ["action-001", ...]
+  "related_action_ids": [48, 49]
 }}
 
 规则：
-- 结论必须有证据支撑（引用 evidence_ids）
-- 弱信号或不确定的判断需标明置信度
-- 涉及具体行动建议时，优先引用已有 action_items
-- 不要超出今日情报上下文范围臆测
+- evidence_ids 必须是上方情报事件的真实数字 ID
+- 弱信号判断需标明"中等置信度"或"低置信度"
+- 行动建议优先引用已有 action_items 的 ID
+- 若上下文中无相关信息，直接说明"当前情报上下文中无此数据"
 """
 ```
+
+**完整填充后的 system prompt 示例（基于 2026-05-23 TH 真实数据）：**
+
+```
+你是 Aurum Radar 的战略情报助理，服务于周大福珠宝品牌的战略决策团队。
+你的职责是围绕每日战略简报，解释判断依据、追问信号、推导行动建议。
+你只能基于以下注入的今日情报上下文作答，不得超出范围臆测。
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+## 今日战略简报（2026-05-23 · TH）
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+### 综合研判
+泰国市场进入战略再校准关键窗口：宏观基本面（GDP超预期、家庭/女性旅游热度上升、
+黄金珠宝搜索走强）与品牌势能（周大福搜索热度持续攀升）构成坚实增长底座；但政策端
+双重冲击——90国免签终止（P0级通道断点）直接削弱旅游零售核心动线，叠加数据基建失效
+（GDELT查询连续失败）导致需求监测失焦，正加速放大培育钻石渗透与金价传导压力。
+短期须以'敏捷渠道重构+场景化产品快反'对冲客流结构剧变，中期需在6–12个月偏好迁移
+窗口内完成从'免税依赖型'向'本地生活嵌入型'运营范式的系统性切换。
+
+### 机会信号
+1. 女性结伴旅行场景爆发带来轻奢金饰快闪店与双人定制礼盒的高潜力落地机会
+2. 泰国Q1 GDP达2.8%超预期，中产消费意愿提升利好婚庆黄金及轻奢钻石品类动销
+3. 周大福在泰搜索热度持续上升，可借势推动渠道商优先铺货与联合营销资源倾斜
+4. 黄金珠宝整体搜索热度上升，为线上精准获客与数字化投放ROI优化提供窗口
+
+### 风险信号
+1. 90国免签政策终止（P0）导致国际游客客流下降5–15%，曼谷核心商圈转化率承压
+2. 旅游零售主渠道受阻，中印及中东婚庆采购需求加速向迪拜、新加坡分流
+3. GDELT数据源连续失效（P2），致使黄金首饰线上兴趣与市场竞争态势研判失准
+4. 培育钻石搜索热度上升（P1），天然金饰品牌面临价值沟通与客群心智防御双重挑战
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+## 市场快照（TH · opp=28 / risk=26）
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+泰国市场呈现'热度上升但通道收窄'的矛盾格局：品牌声量（周大福搜索热度）、品类需求
+（黄金/珠宝整体搜索）、经济基础（GDP超预期）与细分客群动能（女性结伴旅行、家庭暑期
+游）均释放积极信号；但政策端显著收紧（90国免签终止）直接削弱旅游零售核心渠道，叠加
+数据基础设施薄弱（GDELT查询失败）与培育钻石渗透加速，构成结构性挑战。
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+## 专家委员会核心判断（置信度：medium）
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+### 综合研判
+泰国珠宝市场正经历结构性窗口期：旅游渠道塌陷（免签终止）与本地悦己消费动能初显
+（女性结伴旅行+GDP上行）形成尖锐矛盾。周大福线上声量上升是虚势，而黄金搜索热度+
+女性客群仪式化需求构成实基。默认推荐中策——'借港登岸+避实击虚'，即依托曼谷高端
+百货与机场免税店快速落点，主推轻量化双人金饰与入门级培育钻石，以最低试错成本验证
+本地化适配度。
+
+### 关键信号
+[S1] 黄金悦己消费（置信度 high）| evidence: #37 #47 #41
+  黄金饰品搜索热度上升（#37）与GDP超预期（#47）共同指向悦己型轻奢金饰结构性扩张；
+  金价上涨（#41）抑制克重消费，但强化设计溢价空间。
+
+[S2] 女性旅行场景（置信度 medium）| evidence: #46
+  女性结伴旅行被定位为泰国终极目的地，驱动联名款、双人礼盒、刻字定制等高社交属性
+  悦己金饰的即兴与仪式化购买需求，属文化偏好迁移而非短期情绪。
+
+[S3] 免签政策终止（置信度 high）| evidence: #44 #45
+  系统性削弱国际游客婚庆/投资类高客单消费，旅游零售主干道塌陷，已直接触发渠道重构
+  必要性。
+
+[S4] 培育钻石渗透（置信度 medium）| evidence: #36
+  培育钻石搜索热度上升进入偏好形成期，天然钻石叙事缺位加剧替代风险，预示其正从脉冲
+  兴趣转向结构性渗透临界点。
+
+### 战略选项
+- 上策（进攻）：快速在曼谷顶级商圈开设旗舰店，主打高端定制培育钻石
+- 中策（默认推荐）：借港登岸+避实击虚——依托现有渠道，主推轻量化双人金饰+入门级
+  培育钻石，以最低试错成本验证本地化
+- 下策（防守）：收缩旅游零售敞口，转向线上渠道维持品牌声量，等待政策明朗
+
+### 专家分歧
+[D1] 周大福TH热度驱动源：竞品分析师认为应立即响应抢占转化断点；消费者洞察分析师
+  认为热度仅表注意力迁移，非购买意愿。→ 裁定为 watch_item，暂不驱动资源倾斜。
+[D2] 女性旅行营销的佛教文化风险：'姐妹同行''灵魂共鸣'等表述是否过度世俗化？
+  → 需本地宗教事务顾问确认后方可落地。
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+## 高优先级情报事件
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+[P0][#44] TH | negative | opp=31 risk=58
+泰国政府宣布结束对大多数外国游客实施的60天免签入境政策。该政策调整自2026年5月起
+生效，影响范围覆盖包括中国、印度、俄罗斯等主要客源国。
+
+[P0][#45] TH | negative | opp=12 risk=47
+泰国政府正式宣布取消面向90个国家公民的60天免签停留政策。该调整自2026年5月起生效，
+意味着外国游客须提前申请签证或符合新入境条件。
+
+[P0][#43] TH | neutral | opp=10 risk=38
+泰国CAAT（民航局）等多个政府机构在DronTech Asia 2026发布会上共同亮相，聚焦无人机
+技术应用。
+
+[P1][#46] TH | positive | opp=39 risk=14
+《国家法律评论》指出泰国正崛起为女性群体结伴旅行的终极目的地，暗示旅游场景重构与
+女性消费动因强化。
+
+[P1][#47] TH | positive | opp=38 risk=16
+路透社：泰国2026年Q1实际GDP同比增长2.8%，超出市场普遍预测，反映宏观经济基本面稳健。
+
+[P1][#37] TH | positive | opp=37 risk=13
+Google Trends：泰国市场 'gold jewelry' 关键词搜索量呈上升趋势，反映消费者对黄金
+饰品关注度提升。
+
+[P1][#34] TH | positive | opp=38 risk=22
+Google Trends：周大福（TH）关键词在泰国地区搜索量呈上升趋势，品牌认知活跃度变化。
+
+[P1][#35] TH | positive | opp=38 risk=22
+Google Trends：周大福（Chow Tai Fook）在泰国搜索趋势出现上升信号。
+
+[P1][#36] TH | mixed | opp=30 risk=19
+Google Trends：泰国 'lab grown diamond' 关键词搜索趋势呈上升态势，反映消费者对
+培育钻石关注度提升。
+
+[P1][#40] TH | positive | opp=33 risk=17
+标题暗示泰国作为家庭暑期旅行目的地持续受欢迎，可能增强旅游零售生态活力。
+
+[P1][#42] TH | negative | opp=25 risk=45
+Forbes标题：美国零售商对2026年FIFA世界杯带动零售销售的预期趋于谨慎，渠道端信心
+减弱。
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+## 当前行动建议（7条，全部 pending）
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+[P0][action#48] 法务合规团队：下线所有含'免签购金''落地即提'表述的广告文案
+  依据：ID44/45明确免签政策终止构成虚假宣传风险，是解阻后续行动的前提。
+
+[P0][action#49] 法务合规团队：启用TH子公司黄金期货合约对冲比例提升至70%
+  依据：ID41金价数据触发三路传导风险，叠加免签取消导致停留缩短。
+
+[P0][action#43] 商品团队：上线'Siam Sister'双人悦己金饰系列（含刻字手镯+叠戴细链）
+  依据：女性结伴旅行文化强化（ID46）与黄金搜索热度上升（ID37）共同驱动。
+
+[P0][action#44] 市场营销团队：TikTok Thailand发起#MySiamSister挑战赛
+  依据：ID46女性结伴旅行、ID40旅游渠道客流季节性提升。
+
+[P0][action#46] 渠道团队：入驻曼谷CentralWorld百货专柜并铺设'Siam Sister'快闪点
+  依据：ID40旅游零售渠道客流季节性提升，ID46女性结伴旅行文化势能。
+
+[P0][action#47] 管理层：批准中策'借港登岸+避实击虚'执行预算（4.2M THB）与资源调配
+  依据：中策预设条件均可在P0级达成，成本仅为上策33%。
+
+[P1][action#45] 市场营销团队：LINE OA上线'Lab-Grown Gem Guide'互动H5
+  依据：ID36培育钻石搜索热度上升处于认知迁移初期，需教育内容填补认知缺口。
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+## 回答规范
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+每次回答必须以 JSON 格式输出：
+{
+  "conclusion": "直接结论（2-3句）",
+  "reasoning": "判断依据（引用具体事件 #id）",
+  "evidence_ids": [44, 45],
+  "sources": [{"title": "...", "url": "...", "credibility": "S|A|B|C"}],
+  "next_steps": ["具体建议1", "具体建议2"],
+  "related_action_ids": [48, 49]
+}
+
+规则：
+- evidence_ids 必须是上方情报事件的真实数字 ID
+- 弱信号判断需标明"中等置信度"或"低置信度"
+- 行动建议优先引用已有 action_items 的 ID
+- 若上下文中无相关信息，直接说明"当前情报上下文中无此数据"
+```
+
+**Token 估算（实际 TH 数据）：**
+
+| 章节 | 约 tokens |
+|------|-----------|
+| 角色定义 + 规则 | ~150 |
+| 今日战略简报 | ~600 |
+| 市场快照 | ~300 |
+| 专家委员会判断 | ~800 |
+| 高优先级事件（P0×3 + P1×8） | ~1200 |
+| 行动建议（7条） | ~700 |
+| **合计** | **~3750 tokens** |
+
+qwen-max 上下文窗口 32k，多轮对话历史（6轮 × ~500 tokens ≈ 3000 tokens）+ system prompt（3750 tokens）总计约 7000 tokens，充裕。
 
 #### `session_store.py`
 
@@ -608,28 +821,35 @@ App
 
 ### 7.1 上下文层级（Token 预算分配）
 
+基于 TH 市场实际数据的估算（见 §4.2 system prompt 示例）：
+
 ```
-Total budget: ~8000 tokens for context injection
+System prompt 总计：~3750 tokens（qwen-max 32k 窗口的 12%）
 
-Priority 1 (必注入，~2000 tokens):
-  - daily_brief.executive_summary
-  - daily_brief.opportunities (top 3)
-  - daily_brief.risks (top 3)
-  - market_snapshot.overall_judgement (相关市场)
+必注入（~900 tokens）：
+  - daily_brief.executive_summary          ← 综合研判全文
+  - daily_brief.opportunities              ← top 4 条
+  - daily_brief.risks                      ← top 4 条
+  - market_snapshot.overall_judgement      ← 市场快照判断 + opp/risk 分
 
-Priority 2 (按需注入，~3000 tokens):
-  - council_report.council_summary
-  - council_report.key_signals (top 5)
-  - council_report.strategic_options
+必注入（~800 tokens）：
+  - council_report.council_summary         ← 专家综合研判
+  - council_report.key_signals             ← top 4 条，含 evidence_ids
+  - council_report.strategic_options       ← 上/中/下三策摘要
+  - council_report.expert_disagreements    ← 分歧摘要（不含专家全文）
 
-Priority 3 (相关事件，~2500 tokens):
-  - intelligence_events (P0: all, P1: top 10)
-  - 字段：id, summary, signal_direction, env_factors, confidence, source
+必注入（~1200 tokens）：
+  - intelligence_events P0（全部 3 条）
+  - intelligence_events P1（前 8 条，按 opp+risk 降序）
+  - 字段：id, priority, market, signal_direction, opp_score, risk_score, summary
 
-Priority 4 (行动项，~500 tokens):
-  - action_items (status=pending, priority in P0/P1)
-  - 字段：id, department, priority, action_title, rationale
+必注入（~700 tokens）：
+  - action_items (status=pending，全部 7 条)
+  - 字段：id, priority, department, action_title, rationale
 
+不注入（按需追问时才加载）：
+  - council_report.expert_analyses         ← 5 份完整专家报告（~4000 tokens）
+  - intelligence_events P2                 ← 低优先级噪音信号
 ```
 
 ### 7.2 相关性过滤
@@ -647,21 +867,58 @@ TOPIC_QUERY_MAP = {
 }
 ```
 
-### 7.3 多轮对话上下文管理
+### 7.3 多轮对话调用架构
 
+现有 `dashscope.py` 的 `_chat_json` 只支持单轮（system + 一条 user）。Agent Chat 需要在 `dashscope.py` 中**新增一个多轮方法**：
+
+```python
+# dashscope.py 新增
+def chat_json_multi_turn(
+    self,
+    *,
+    system: str,                  # 完整 system prompt（含 DB 上下文，session 创建时构建）
+    messages: list[dict],         # 完整对话历史 [{"role": "user"/"assistant", "content": ...}]
+    model: str | None = None,
+    temperature: float = 0.4,
+) -> dict[str, Any]:
+    """多轮对话调用，messages 为完整历史列表（不含 system）。"""
+    full_messages = [{"role": "system", "content": system}] + messages
+    # 同现有 _chat_json 的 retry 逻辑
+    ...
 ```
-Turn 1: 用户问 "为什么新加坡机会增强？"
-  → 注入全量上下文（brief + council + top events）
 
-Turn 2: 用户问 "那金价影响呢？"（指代关系）
-  → 保留 Turn 1 的 session context
-  → 追加加载 macro 类型事件（F1/F5 因子）
-  → 历史消息压缩：Turn 1 的 assistant 回复缩减为 summary
+**每轮对话的 messages 数组结构：**
 
-Turn 3+:
-  → 历史消息滚动窗口（保留最近 6 轮）
-  → 原始 DB 上下文仅在首轮注入（session 锁定 context_snapshot）
+```python
+# Session 创建时（Turn 1）：
+messages = [
+    {"role": "system",    "content": SYSTEM_PROMPT_WITH_ALL_DB_CONTEXT},  # ← 固定，session 锁定
+    {"role": "user",      "content": "90国免签终止对我们的影响有多大？"},
+]
+
+# Turn 2（追加历史）：
+messages = [
+    {"role": "system",    "content": SYSTEM_PROMPT_WITH_ALL_DB_CONTEXT},  # ← 不变
+    {"role": "user",      "content": "90国免签终止对我们的影响有多大？"},
+    {"role": "assistant", "content": '{"conclusion": "...", "evidence_ids": [44, 45], ...}'},
+    {"role": "user",      "content": "那金价上涨的影响呢？"},              # ← 当前问题
+]
+
+# Turn 6+（滚动窗口，最多保留 6 轮）：
+messages = [
+    {"role": "system",    "content": SYSTEM_PROMPT_WITH_ALL_DB_CONTEXT},
+    # 保留最近 6 轮 user/assistant 对
+    {"role": "user",      "content": "..."},
+    {"role": "assistant", "content": "..."},
+    ...
+    {"role": "user",      "content": "当前问题"},
+]
 ```
+
+**关键设计决策：**
+- DB 上下文注入在 `system` 中，**session 创建时一次性构建，之后不再重新查询**
+- `assistant` 的历史消息存储完整 JSON 字符串（前端可解析展示，LLM 也能理解）
+- 6 轮滚动窗口足够维持对话连贯性，同时控制 token 用量
 
 ---
 
@@ -708,10 +965,10 @@ class ChatMessage:
 
 ## 9. 实现阶段
 
-### Phase 0：等待上游落库（同事负责，不在本人工作范围）
+### Phase 0：上游落库（同事负责）
 
-- [ ] 同事执行管道 Stage 3-7，生成 intelligence_events / market_snapshots / daily_briefs / council_reports / action_items
-- [ ] 联调确认各表数据格式符合第 §0.2 节的交接契约
+- [x] TH 市场已完成：intelligence_events×14 / market_snapshots×1 / daily_briefs×1 / council_reports×1 / action_items×7
+- [ ] SG、JP 等其他市场待续
 
 ### Phase 1：后端 API（本人负责，可在 Phase 0 完成前并行开发）
 
