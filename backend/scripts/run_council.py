@@ -40,7 +40,7 @@ from datetime import datetime, timedelta, timezone
 
 from app.database import repository
 from app.database.session import SessionLocal
-from app.services.council import derive_actions, run_council
+from app.services.council import derive_actions, normalize_department_actions, run_council
 from app.services.evaluation import run_evaluation
 from app.services.pipeline import run_pipeline
 from app.services.taxonomy import (
@@ -97,7 +97,7 @@ def _print_council(r: dict) -> None:
         print(f"  打法：{s.get('description', '')}")
 
     print("\n【部门行动】")
-    for team, items in (r.get("department_actions", {}) or {}).items():
+    for team, items in normalize_department_actions(r.get("department_actions")).items():
         for a in items or []:
             print(f"  [{team}|{a.get('priority', '')}] {a.get('action', '')}")
 
