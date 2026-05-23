@@ -31,7 +31,11 @@ the hash → id map so Stage 4 can link ``intelligence_events.raw_document_id``.
 from __future__ import annotations
 
 import argparse
+import io
 import json
+import sys
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from contextlib import redirect_stdout
 from datetime import datetime, timedelta, timezone
 
 from app.database import repository
@@ -162,6 +166,13 @@ def _parse_args() -> argparse.Namespace:
         help="Skip the QA evaluation agent",
     )
     p.add_argument(
+        "--concurrency",
+        type=int,
+        default=1,
+        help="Parallel markets (default 1 = serial). 4 is a safe value for "
+        "DashScope qwen-plus + qwen-max; higher may hit LLM rate limits.",
+    )
+    p.add_argument(
         "--output",
         default="council_output.json",
         help="Where to dump the full council + evaluation JSON (markets nested)",
@@ -243,6 +254,31 @@ def _run_one_market(market: str, since, until, limit, *, run_eval: bool) -> tupl
     return report, evaluation
 
 
+def _run_one_market_buffered(
+    market: str, since, until, limit, *, run_eval: bool
+) -> tuple[dict, dict | None, str, str | None]:
+    """Run one market with stdout captured into a string buffer.
+
+    Returns ``(report, evaluation, captured_output, error_message)``. Used
+    by the concurrent path so that each market's printed output appears
+    as a coherent block instead of interleaving across threads. Loguru
+    progress lines still go to stderr in real time.
+    """
+    buf = io.StringIO()
+    err_msg: str | None = None
+    report: dict = {}
+    evaluation: dict | None = None
+    with redirect_stdout(buf):
+        try:
+            report, evaluation = _run_one_market(
+                market, since, until, limit, run_eval=run_eval
+            )
+        except Exception as exc:  # noqa: BLE001 - reported via err_msg
+            err_msg = str(exc)
+            print(f"!! {market}: failed — {exc}")
+    return report, evaluation, buf.getvalue(), err_msg
+
+
 def main() -> None:
     args = _parse_args()
     since = _parse_since(args.since)
@@ -253,23 +289,46 @@ def main() -> None:
         print(f"!! 没有市场达到 --min-docs={args.min_docs} 的门槛，无事可做。")
         return
 
+    concurrency = max(1, args.concurrency)
     all_results: dict[str, dict] = {}
     failures: list[tuple[str, str]] = []
-    for market in markets:
-        try:
-            report, evaluation = _run_one_market(
-                market,
-                since,
-                until,
-                args.limit,
-                run_eval=not args.no_evaluation,
-            )
-        except Exception as exc:  # noqa: BLE001 - one market must not abort others
-            print(f"!! {market}: failed — {exc}")
-            failures.append((market, str(exc)))
-            continue
-        if report:
-            all_results[market] = {"council": report, "evaluation": evaluation}
+
+    if concurrency == 1:
+        # Serial path — keep the original live-print behavior
+        for market in markets:
+            try:
+                report, evaluation = _run_one_market(
+                    market, since, until, args.limit,
+                    run_eval=not args.no_evaluation,
+                )
+            except Exception as exc:  # noqa: BLE001 - one market must not abort others
+                print(f"!! {market}: failed — {exc}")
+                failures.append((market, str(exc)))
+                continue
+            if report:
+                all_results[market] = {"council": report, "evaluation": evaluation}
+    else:
+        # Concurrent path — buffer each market's stdout, flush on completion
+        print(f"== 并发跑 {len(markets)} 个市场，concurrency={concurrency} ==\n")
+        with ThreadPoolExecutor(max_workers=concurrency) as ex:
+            futures = {
+                ex.submit(
+                    _run_one_market_buffered,
+                    m, since, until, args.limit,
+                    run_eval=not args.no_evaluation,
+                ): m
+                for m in markets
+            }
+            for fut in as_completed(futures):
+                market = futures[fut]
+                report, evaluation, captured, err = fut.result()
+                # Flush this market's full output as a block
+                sys.stdout.write(captured)
+                sys.stdout.flush()
+                if err:
+                    failures.append((market, err))
+                elif report:
+                    all_results[market] = {"council": report, "evaluation": evaluation}
 
     with open(args.output, "w", encoding="utf-8") as f:
         json.dump(all_results, f, ensure_ascii=False, indent=2)
