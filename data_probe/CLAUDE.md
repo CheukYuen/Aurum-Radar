@@ -18,7 +18,7 @@ cp .env.example .env                # 把 TAVILY_API_KEY 等填上
 
 python scripts/run_all.py                         # 原 6 个 SG probe
 python scripts/run_all.py --global                # SG + 5 全球
-python scripts/run_all.py --only-global --include reddit
+python scripts/run_all.py --only-global --include reddit,trends,baidu
 python scripts/snapshot_crawl.py                  # 汇总当日所有 JSONL 出快照
 ```
 
@@ -35,11 +35,11 @@ data_probe/
 ├── scripts/
 │   ├── utils.py                  # HTTP（urllib 优先+requests 兜底）/ JSONL / dedup / cache / DDG 两步法
 │   ├── snapshot_crawl.py         # 当日 JSONL → CRAWL_SNAPSHOT_*.md + 归档
-│   ├── run_all.py                # 编排：--global / --only-global / --include reddit,trends
+│   ├── run_all.py                # 编排：--global / --only-global / --include reddit,trends,baidu
 │   ├── probe_news.py / probe_competitors.py / probe_platform_policy.py / probe_regulations.py / probe_market_data.py / probe_malls.py
 │   │                             # SG MVP 6 个（输出 JSON，老 schema）
-│   └── probe_gdelt / probe_global_news / probe_federal_register / probe_ecommerce / probe_tavily / probe_reddit / probe_trends
-│                                 # 全球 7 个（输出 JSONL，PRD §2 18 字段 schema）
+│   └── probe_gdelt / probe_global_news / probe_federal_register / probe_ecommerce / probe_tavily / probe_reddit / probe_trends / probe_baidu_index
+│                                 # 全球/可选 JSONL probes（输出 JSONL，PRD §2 18 字段 schema）
 └── output/
     ├── normalized/               # *.jsonl（全球）+ *.json（SG 老版）
     ├── raw/                      # 原始抓取 + parse_failed 的 raw HTML snapshot
@@ -72,7 +72,7 @@ data_probe/
 ### 双 schema 并存
 
 - **SG MVP 6 probe** 用 `utils.make_record()` → 老版 11 字段（`source_type, market, entity, title, summary, url, published_at, fetched_at, status, error, ...`），写 JSON。
-- **全球 7 probe** 用 `utils.make_intelligence_record()` → PRD §2 18 字段（含 `source_id / language / signal_type / impact_direction / evidence_level / confidence / entities{brands,competitors,products,locations}`），写 JSONL。
+- **全球 / 可选 JSONL probe** 用 `utils.make_intelligence_record()` → PRD §2 18 字段（含 `source_id / language / signal_type / impact_direction / evidence_level / confidence / entities{brands,competitors,products,locations}`），写 JSONL。2026-05-23 全量 snapshot 实际包含 8 个 JSONL source：`google_news_rss / federal_register / gdelt_doc / ecommerce_announcements / tavily / reddit / google_trends / baidu_index`。
 - 老 probe 不动；新 probe 共用 utils 但走 jsonl 路径。
 
 ### JSONL + dedup
@@ -107,6 +107,8 @@ data_probe/
 | `probe_global_news` | google_news_rss | ✅ 全通 | 654 | 9 市场 × 5 查询 × 15 条；URL 是 GN 跳转，需 DDG 二步法找真实媒体 url |
 | `probe_reddit` | reddit | ✅ 全通（公开 JSON） | 383 | 见下方「Reddit 公开 JSON」章节 |
 | `probe_tavily` | tavily | ✅ 全通 | 146 | 见下方「Tavily 接入」章节 |
+| `probe_trends` | google_trends | ✅ 全通 | 45 | pytrends 9 市场 × 5 关键词，demo-grade 搜索热度 |
+| `probe_baidu_index` | baidu_index | ⚠ 受限占位 | 1 | 百度指数页面可访问，但真实指数曲线依赖 JS/登录态；仅保存 raw HTML + failed placeholder |
 | `probe_gdelt` | gdelt_doc | ⚠ 部分通 | 120 / 19 失败 | LibreSSL EOF + 429 限流；1.2s 间隔 + retry 后 ~50% 成功 |
 | `probe_ecommerce` | ecommerce_announcements | ⚠ 大部分失败 | 4 | Shopify Changelog 不是真 atom；Amazon 被反爬重定向；Shopee `open.shopee.com/news` 超时；Lazada JS → parse_failed + raw snapshot |
 | `probe_news` (SG) | news | ✅ feedparser 路径已验证 | — | 3 个 Google News RSS Feed × 100 条；CNA/Straits Times 可抓正文 |
@@ -116,7 +118,7 @@ data_probe/
 | `probe_market_data` (SG) | market_data | ✅ 全通 | — | Yahoo Finance JSON API（见下） |
 | `probe_malls` (SG) | mall | ✅ 选用 | — | Marina Bay Sands / ION / Paragon 三个 Google News RSS 各 100 条；ION Orchard Events 页全 JS 已移除 |
 
-合计实测 **1,442 条记录**，9 市场覆盖。详细评级与战略分析见 `output/CRAWL_SUMMARY_20260523.md`。
+合计实测 **1,488 条 JSONL 记录**（含 22 个 failed placeholders），覆盖 9 个目标市场 + `CN` 百度指数受限占位。详细评级与战略分析见 `output/CRAWL_SUMMARY_20260523.md`。
 
 ---
 
@@ -173,6 +175,31 @@ price = json.loads(urllib.request.urlopen(req, timeout=15).read())["chart"]["res
 
 **Market 字段**
 - 固定 `GLOBAL`，因为 Reddit 帖子无原生市场标签；语言主要英语区
+
+---
+
+## Trends / 百度指数接入经验（2026-05-23）
+
+### Google Trends (`probe_trends`, source_id=`google_trends`)
+
+**状态**：✅ 已跑通，45 条。
+
+- 依赖：`pytrends==4.9.2`
+- 运行：`python scripts/probe_trends.py` 或 `python scripts/run_all.py --only-global --include trends`
+- 覆盖：9 市场 × 5 关键词 = 45 条（`gold jewelry`, `diamond jewelry`, `lab grown diamond`, `Chow Tai Fook`, `周大福`）
+- 输出：`output/normalized/google_trends_YYYYMMDD.jsonl`
+- 数据形态：7-day interest over time 序列 + 平均热度；`signal_type=product_trend`，`confidence=0.3`
+- 定位：demo-grade 搜索热度对照，只能做方向性参考，不等价销量 / 需求绝对值
+
+### Baidu Index / 百度指数 (`probe_baidu_index`, source_id=`baidu_index`)
+
+**状态**：⚠ 已登记并探测，但只有 1 条受限占位记录。
+
+- 运行：`python scripts/probe_baidu_index.py` 或 `python scripts/run_all.py --only-global --include baidu`
+- 输出：`output/normalized/baidu_index_YYYYMMDD.jsonl`
+- 当前结果：百度指数 shell 页面和 help 页面可访问，raw HTML 会保存到 `output/raw/baidu_index_*.html`
+- 限制：真实关键词指数曲线依赖 JS app + 登录态 / 授权流程；当前纯 HTTP probe 不抽取 time series
+- 生产化路径：官方授权、合规登录态浏览器采集，或 licensed data provider
 
 ---
 

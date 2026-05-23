@@ -3,7 +3,7 @@
 Modes:
   (default)         Run SG-market probes only (news/competitors/...)
   --global          Append the 5 global intelligence probes
-  --include reddit,trends   Add opt-in probes (need creds/libs)
+  --include reddit,trends,baidu   Add opt-in probes (need creds/libs)
 """
 from __future__ import annotations
 
@@ -37,6 +37,7 @@ GLOBAL_PROBES = [
 OPTIONAL_PROBES = {
     "reddit": ("reddit", "probe_reddit", "probe_reddit"),
     "trends": ("google_trends", "probe_trends", "probe_trends"),
+    "baidu": ("baidu_index", "probe_baidu_index", "probe_baidu_index"),
 }
 
 
@@ -77,7 +78,7 @@ def main() -> None:
     parser.add_argument("--global", dest="run_global", action="store_true",
                         help="Append the 5 global intelligence probes (PRD 爬虫2)")
     parser.add_argument("--include", default="",
-                        help="Comma-separated opt-in probes: reddit,trends")
+                        help="Comma-separated opt-in probes: reddit,trends,baidu")
     parser.add_argument("--only-global", action="store_true",
                         help="Run only the global probes (skip the SG MVP probes)")
     args = parser.parse_args()

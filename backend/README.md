@@ -12,7 +12,7 @@ FastAPI + Uvicorn 后端，提供 JSON API 供前端调用。
 
 ```bash
 cd backend
-pip install -r requirements.txt
+pip3 install -r requirements.txt
 ```
 
 ### 2. 配置环境变量

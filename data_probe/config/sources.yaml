@@ -252,6 +252,7 @@ registry_only:
   trend:
     - {source_id: google_trends, source_name: Google Trends, source_type: trend, access_type: restricted, cost_type: restricted, markets: [GLOBAL], url: "https://trends.google.com/trends/", notes: "官方 Trends API 需申请"}
     - {source_id: pytrends, source_name: pytrends (unofficial), source_type: trend, access_type: api, cost_type: free, markets: [GLOBAL], url: "https://github.com/GeneralMills/pytrends", notes: "opt-in via probe_trends; 非官方易限流"}
+    - {source_id: baidu_index, source_name: Baidu Index / 百度指数, source_type: trend, access_type: restricted, cost_type: freemium, markets: [CN], url: "https://index.baidu.com/v2/index.html#/", notes: "opt-in via probe_baidu_index; 页面依赖 JS/登录态，当前仅登记并输出受限占位记录"}
     - {source_id: serpapi_trends, source_name: SerpAPI Google Trends, source_type: trend, access_type: api, cost_type: paid, markets: [GLOBAL], url: "https://serpapi.com/google-trends-api"}
     - {source_id: dataforseo_trends, source_name: DataForSEO Trends API, source_type: trend, access_type: api, cost_type: paid, markets: [GLOBAL], url: "https://dataforseo.com/apis/google-trends-api"}
 

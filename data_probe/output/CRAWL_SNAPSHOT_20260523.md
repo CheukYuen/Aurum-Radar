@@ -1,10 +1,10 @@
 # Aurum Radar — Crawl Snapshot 20260523
 
-Generated: 2026-05-23T03:27:05.860021+00:00
+Generated: 2026-05-23T04:07:10.297658+00:00
 
-- JSONL files: **6**
+- JSONL files: **8**
 - Legacy JSON files (SG MVP probes): **23**
-- Raw HTML snapshots (parse_failed): **1**
+- Raw HTML snapshots (parse_failed): **2**
 
 ---
 
@@ -12,14 +12,34 @@ Generated: 2026-05-23T03:27:05.860021+00:00
 
 | source_id | type | total | success | failed | markets |
 |---|---|---|---|---|---|
+| `baidu_index` | trend | 1 | 0 | 1 | CN |
 | `ecommerce_announcements` | ecommerce | 4 | 2 | 2 | GLOBAL, SG, US |
 | `federal_register` | regulation | 135 | 135 | 0 | US |
 | `gdelt_doc` | news | 120 | 101 | 19 | ID, JP, KR, MY, PH, SG, TH, US, VN |
 | `google_news_rss` | news | 654 | 654 | 0 | ID, JP, KR, MY, PH, SG, TH, US, VN |
+| `google_trends` | trend | 45 | 45 | 0 | ID, JP, KR, MY, PH, SG, TH, US, VN |
 | `reddit` | social | 383 | 383 | 0 | GLOBAL |
 | `tavily` | news | 146 | 146 | 0 | ID, JP, MY, PH, SG, TH, VN |
 
-**Grand total**: 1442 records, 21 failed placeholders.
+**Grand total**: 1488 records, 22 failed placeholders.
+
+---
+
+## baidu_index  (1 records)
+
+**By market**: CN=1
+
+**By signal_type**: product_trend=1
+
+**Brand hits**: 周大福=1
+
+**Product hits**: gold jewelry=1, diamond jewelry=1, lab grown diamond=1
+
+### Samples
+
+### Failed queries
+
+- [failed] Baidu Index requires JS/login for keyword trend data — index shell fetched; raw snapshot saved to output/raw/baidu_index_20260523T040705Z.html; help page reachable, but keyword index data still requires the JS app/session flow; No normalized Baidu Index t
 
 ---
 
@@ -331,6 +351,173 @@ Generated: 2026-05-23T03:27:05.860021+00:00
 
 ---
 
+## google_trends  (45 records)
+
+**By market**: JP=5, KR=5, SG=5, TH=5, MY=5, VN=5, ID=5, PH=5, US=5
+
+**By signal_type**: product_trend=45
+
+**Brand hits**: Chow Tai Fook=9, 周大福=9
+
+**Product hits**: gold jewelry=9, diamond jewelry=9, lab grown diamond=9
+
+### Samples
+
+#### Market ID  (5 records)
+
+- **Trend: gold jewelry (ID)**
+  - url: 
+  - summary: 7-day avg interest = 1.6/100; series=[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 63, 0, 0, 0, 56, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 26, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+  - entities: {"brands": [], "competitors": [], "products": ["gold jewelry"], "locations": []}
+
+- **Trend: diamond jewelry (ID)**
+  - url: 
+  - summary: 7-day avg interest = 0.0/100; series=[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+  - entities: {"brands": [], "competitors": [], "products": ["diamond jewelry"], "locations": []}
+
+- **Trend: lab grown diamond (ID)**
+  - url: 
+  - summary: 7-day avg interest = 0.2/100; series=[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 30, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  - entities: {"brands": [], "competitors": [], "products": ["lab grown diamond"], "locations": []}
+
+#### Market JP  (5 records)
+
+- **Trend: gold jewelry (JP)**
+  - url: 
+  - summary: 7-day avg interest = 1.6/100; series=[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 100, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 88, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+  - entities: {"brands": [], "competitors": [], "products": ["gold jewelry"], "locations": []}
+
+- **Trend: diamond jewelry (JP)**
+  - url: 
+  - summary: 7-day avg interest = 0.4/100; series=[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 69, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  - entities: {"brands": [], "competitors": [], "products": ["diamond jewelry"], "locations": []}
+
+- **Trend: lab grown diamond (JP)**
+  - url: 
+  - summary: 7-day avg interest = 0.0/100; series=[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+  - entities: {"brands": [], "competitors": [], "products": ["lab grown diamond"], "locations": []}
+
+#### Market KR  (5 records)
+
+- **Trend: gold jewelry (KR)**
+  - url: 
+  - summary: 7-day avg interest = 0.3/100; series=[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+  - entities: {"brands": [], "competitors": [], "products": ["gold jewelry"], "locations": []}
+
+- **Trend: diamond jewelry (KR)**
+  - url: 
+  - summary: 7-day avg interest = 0.2/100; series=[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 22, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 19, 0, 0, 0, 0,
+  - entities: {"brands": [], "competitors": [], "products": ["diamond jewelry"], "locations": []}
+
+- **Trend: lab grown diamond (KR)**
+  - url: 
+  - summary: 7-day avg interest = 0.0/100; series=[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+  - entities: {"brands": [], "competitors": [], "products": ["lab grown diamond"], "locations": []}
+
+#### Market MY  (5 records)
+
+- **Trend: gold jewelry (MY)**
+  - url: 
+  - summary: 7-day avg interest = 0.5/100; series=[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+  - entities: {"brands": [], "competitors": [], "products": ["gold jewelry"], "locations": []}
+
+- **Trend: diamond jewelry (MY)**
+  - url: 
+  - summary: 7-day avg interest = 0.4/100; series=[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+  - entities: {"brands": [], "competitors": [], "products": ["diamond jewelry"], "locations": []}
+
+- **Trend: lab grown diamond (MY)**
+  - url: 
+  - summary: 7-day avg interest = 0.0/100; series=[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+  - entities: {"brands": [], "competitors": [], "products": ["lab grown diamond"], "locations": []}
+
+#### Market PH  (5 records)
+
+- **Trend: gold jewelry (PH)**
+  - url: 
+  - summary: 7-day avg interest = 19.5/100; series=[0, 65, 0, 63, 43, 37, 51, 36, 72, 37, 54, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 73, 0, 67, 64, 40, 52, 65, 41, 0, 44, 0, 0, 33, 0, 0, 54, 100, 0, 0, 0, 0, 0, 0, 0, 49, 33, 41, 47, 42, 0, 0, 32, 33, 49, 0, 32, 34, 36, 47, 63, 0, 0, 0, 0, 0, 0, 0, 0, 0, 31, 0, 38, 49,
+  - entities: {"brands": [], "competitors": [], "products": ["gold jewelry"], "locations": []}
+
+- **Trend: diamond jewelry (PH)**
+  - url: 
+  - summary: 7-day avg interest = 0.5/100; series=[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 35, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 27, 0, 0, 0, 0, 0, 0, 0, 0, 27, 0, 0, 0, 0, 0
+  - entities: {"brands": [], "competitors": [], "products": ["diamond jewelry"], "locations": []}
+
+- **Trend: lab grown diamond (PH)**
+  - url: 
+  - summary: 7-day avg interest = 0.9/100; series=[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 49, 0, 0, 0, 0, 0, 0, 0, 0, 0, 71, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  - entities: {"brands": [], "competitors": [], "products": ["lab grown diamond"], "locations": []}
+
+#### Market SG  (5 records)
+
+- **Trend: gold jewelry (SG)**
+  - url: 
+  - summary: 7-day avg interest = 0.7/100; series=[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 100, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 21, 0, 0, 0, 0
+  - entities: {"brands": [], "competitors": [], "products": ["gold jewelry"], "locations": []}
+
+- **Trend: diamond jewelry (SG)**
+  - url: 
+  - summary: 7-day avg interest = 0.3/100; series=[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 24, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  - entities: {"brands": [], "competitors": [], "products": ["diamond jewelry"], "locations": []}
+
+- **Trend: lab grown diamond (SG)**
+  - url: 
+  - summary: 7-day avg interest = 0.1/100; series=[0, 19, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  - entities: {"brands": [], "competitors": [], "products": ["lab grown diamond"], "locations": []}
+
+#### Market TH  (5 records)
+
+- **Trend: gold jewelry (TH)**
+  - url: 
+  - summary: 7-day avg interest = 0.6/100; series=[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 94, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  - entities: {"brands": [], "competitors": [], "products": ["gold jewelry"], "locations": []}
+
+- **Trend: diamond jewelry (TH)**
+  - url: 
+  - summary: 7-day avg interest = 0.2/100; series=[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+  - entities: {"brands": [], "competitors": [], "products": ["diamond jewelry"], "locations": []}
+
+- **Trend: lab grown diamond (TH)**
+  - url: 
+  - summary: 7-day avg interest = 0.6/100; series=[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 100, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  - entities: {"brands": [], "competitors": [], "products": ["lab grown diamond"], "locations": []}
+
+#### Market US  (5 records)
+
+- **Trend: gold jewelry (US)**
+  - url: 
+  - summary: 7-day avg interest = 35.3/100; series=[32, 36, 51, 55, 58, 70, 84, 52, 40, 34, 28, 28, 33, 32, 35, 32, 35, 37, 33, 30, 30, 28, 30, 33, 36, 41, 51, 59, 57, 66, 100, 62, 48, 33, 30, 28, 30, 29, 32, 32, 34, 35, 33, 29, 30, 30, 34, 32, 36, 44, 53, 50, 58, 54, 64, 36, 32, 23, 24, 24, 25, 24, 23, 25, 27,
+  - entities: {"brands": [], "competitors": [], "products": ["gold jewelry"], "locations": []}
+
+- **Trend: diamond jewelry (US)**
+  - url: 
+  - summary: 7-day avg interest = 12.0/100; series=[12, 11, 17, 26, 30, 29, 38, 27, 16, 10, 7, 9, 10, 9, 10, 9, 10, 10, 9, 10, 9, 9, 10, 9, 10, 11, 16, 20, 26, 21, 55, 28, 14, 9, 8, 7, 8, 8, 9, 10, 9, 10, 8, 8, 9, 10, 10, 10, 10, 15, 15, 17, 23, 17, 24, 14, 8, 5, 7, 8, 7, 7, 7, 7, 6, 8, 7, 8, 8, 9, 8, 9, 13, 12,
+  - entities: {"brands": [], "competitors": [], "products": ["diamond jewelry"], "locations": []}
+
+- **Trend: lab grown diamond (US)**
+  - url: 
+  - summary: 7-day avg interest = 28.4/100; series=[25, 26, 38, 52, 75, 65, 62, 97, 29, 22, 17, 18, 19, 16, 18, 18, 18, 22, 17, 17, 20, 21, 27, 26, 28, 28, 35, 46, 73, 49, 70, 58, 37, 23, 21, 18, 17, 17, 18, 19, 20, 20, 23, 20, 23, 25, 25, 27, 33, 36, 40, 57, 75, 55, 56, 35, 27, 17, 18, 17, 15, 17, 16, 19, 16, 1
+  - entities: {"brands": [], "competitors": [], "products": ["lab grown diamond"], "locations": []}
+
+#### Market VN  (5 records)
+
+- **Trend: gold jewelry (VN)**
+  - url: 
+  - summary: 7-day avg interest = 0.2/100; series=[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 9, 0, 0, 0, 0
+  - entities: {"brands": [], "competitors": [], "products": ["gold jewelry"], "locations": []}
+
+- **Trend: diamond jewelry (VN)**
+  - url: 
+  - summary: 7-day avg interest = 0.2/100; series=[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 19, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 9, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  - entities: {"brands": [], "competitors": [], "products": ["diamond jewelry"], "locations": []}
+
+- **Trend: lab grown diamond (VN)**
+  - url: 
+  - summary: 7-day avg interest = 0.2/100; series=[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 11, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  - entities: {"brands": [], "competitors": [], "products": ["lab grown diamond"], "locations": []}
+
+---
+
 ## reddit  (383 records)
 
 **By market**: GLOBAL=383
@@ -523,4 +710,5 @@ I would be happy with any of them I think and planning to get 10K rose go
 
 ## Raw HTML snapshots (parse_failed)
 
+- `output/raw/baidu_index_20260523T040705Z.html` — 2415 bytes
 - `output/raw/lazada_open_platform_20260523T023307Z.html` — 23314 bytes
