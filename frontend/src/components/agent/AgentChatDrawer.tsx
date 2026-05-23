@@ -1,124 +1,41 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import Icon from '../ui/Icon'
-
-const CONTEXT_CHIPS = ['今日战略简报', '新加坡市场判断', '高优先级事件', '部门行动建议', '关联分析']
+import { streamAgent, type AgentType } from '../../api/agentStream'
+import { CHIP_DEFS, buildChipContext, type ChipId } from '../../api/chipContext'
 
 const SUGGESTED_QUESTIONS = [
-  '为什么今天新加坡被判断为机会增强？',
+  '为什么今天的市场被判断为机会增强？',
   '金价高位对哪些产品线影响最大？',
   '今天有哪些 P0 / P1 行动建议？',
   '哪些判断有最高可信来源？',
 ]
 
-interface AgentResponse {
-  conclusion: string
-  basis: string
-  events: string[]
-  sources: string[]
-  nextStep: string
-}
-
-const CANNED: Record<string, AgentResponse> = {
-  '为什么今天新加坡被判断为机会增强？': {
-    conclusion: '新加坡市场今日判断为「机会增强」，核心驱动力来自旅游消费复苏与高端珠宝需求的双重共振。',
-    basis: 'MAS 最新统计显示新加坡零售额环比 +4.2%，奢侈品类增速领跑。鸟节路、滨海湾区客流指数创 2023 年以来新高，竞品亦加速布局印证市场信心。',
-    events: [
-      '新加坡旅游局 Q2 入境游客同比 +18%',
-      'Chow Tai Fook 宣布扩大新加坡门店布局',
-      '贝恩 Q1 报告：东南亚高端消费超预期回升',
-    ],
-    sources: [
-      'Singapore Retail Sales Index · MAS · 2026/05',
-      'STB Tourism Statistics · May 2026',
-      'Bain Luxury Report Q1 2026',
-    ],
-    nextStep: '建议产品部门优先评估 SKU 投放节奏，门店运营同步更新陈列策略以捕捉旅游客流高峰。',
-  },
-  '金价高位对哪些产品线影响最大？': {
-    conclusion: '当前金价（约 $3,280/oz）对纯金饰品线成本压力最大，但对高端镶嵌宝石线有潜在利好，可借势强化品牌高端调性。',
-    basis: 'Au 价自 4 月初累计涨 12.3%，推高纯金饰品生产成本约 8–10%。消费者调研显示高净值客群购买频次不变，入门级消费者购买意愿下降约 22%。',
-    events: [
-      'COMEX 黄金期货 5/22 收报 $3,281',
-      '内部 CRM 调研：入门消费者意愿下滑 22%',
-      '竞品启动促销降价 5–8% 清库存',
-    ],
-    sources: [
-      'COMEX Gold Futures · Bloomberg · 2026/05/22',
-      'Internal CRM Survey May 2026',
-      'Competitor Pricing Monitor · Aurum Intel',
-    ],
-    nextStep: '短期：入门金饰调价或推分期方案。中期：加大镶嵌系列投入，降低纯金成本敞口。',
-  },
-  '今天有哪些 P0 / P1 行动建议？': {
-    conclusion: '今日共检测到 2 条 P0 行动、3 条 P1 行动，均需本周内完成响应。',
-    basis: 'P0 源自竞品突发扩张与平台政策变更，P1 涵盖产品结构调整与社媒内容响应窗口。',
-    events: [
-      '[P0] 竞品 Luk Fook 新加坡增开 2 门店（ION、Takashimaya）',
-      '[P0] Shopee 奢侈品新规 5/28 生效，需提前认证',
-      '[P1] Instagram SEA 算法更新，视频权重上升',
-      '[P1] 新加坡旅游局 Q3 合作招募截止 5/31',
-      '[P1] 建议调整 Au 锁价比例降低汇率风险',
-    ],
-    sources: [
-      'Internal Intelligence Alert · 2026/05/22 09:00',
-      'Shopee Platform Policy Notice · 2026/05/20',
-      'Instagram Algorithm Update · SearchEngineJournal',
-    ],
-    nextStep: '立即：启动 Shopee 认证，调取竞品选址情报。本周内：确认旅游局合作，更新社媒内容矩阵。',
-  },
-  '哪些判断有最高可信来源？': {
-    conclusion: '新加坡市场判断与金价影响分析可信度最高，均来自政府级公开权威数据，且经过三源交叉验证。',
-    basis: '判断可信度按来源权威性（政府 > 行业报告 > 媒体）、数据时效性（48h 内 > 7日内）、多源验证程度（≥3 个独立来源）综合评分。',
-    events: [
-      '新加坡零售额：MAS 官方统计，三源验证，A 级',
-      '金价走势：COMEX + Bloomberg + 路透社，三方确认，A 级',
-      '竞品动态：门店勘察 + 公司公告 + 行业媒体，B+ 级',
-    ],
-    sources: [
-      'MAS Singapore Retail Statistics · Government · A 级',
-      'Bloomberg Terminal Gold Spot · Financial · A 级',
-      'STB Official Tourism Data · Government · A 级',
-    ],
-    nextStep: '策略制定时优先参考 A 级来源判断，单一来源情报标注「待验证」后再行动。',
-  },
-  '解释今日战略判断的主要依据': {
-    conclusion: '今日战略判断综合了宏观经济信号、竞品动态、平台数据与消费者行为四个维度，整体置信度为高。',
-    basis: '判断框架采用多源信号加权：①宏观层：金价、汇率、政策 ②竞争层：竞品动态、新店布局 ③渠道层：平台流量、社媒声量 ④消费层：CRM、客流、意愿调研。各维度均有明确数据支撑。',
-    events: [
-      '宏观层：金价高位 + SGD 走强，影响采购成本与定价策略',
-      '竞争层：Luk Fook 加速扩张，正面竞争压力上升',
-      '渠道层：Shopee 新规影响线上品牌运营合规性',
-      '消费层：旅游客流创新高，高净值消费意愿稳定',
-    ],
-    sources: [
-      'Aurum Intelligence Scoring Framework v2.1',
-      'Internal Dashboard Pipeline · 2026/05/22',
-      'Cross-source Validation Report · May 2026',
-    ],
-    nextStep: '建议每周对比战略判断与实际业务数据，验证信号有效性；遇重大偏差时触发快速复盘。',
-  },
-}
-
-const FALLBACK: AgentResponse = {
-  conclusion: '已接收您的问题，正在基于当前情报库进行推理分析。',
-  basis: '情报覆盖新加坡、日本、澳大利亚、英国等核心市场，来源包括政府公开统计、行业研究报告及竞品监测。',
-  events: ['今日新增情报事件 12 条', '高优先级信号 3 条已推送至行动建议'],
-  sources: ['Aurum Radar Intelligence DB · 2026/05/22', 'Multi-source Aggregation Pipeline · Live'],
-  nextStep: '建议前往「情报中心」查看完整事件列表，或「行动建议」查看部门级响应方案。',
-}
-
 interface ChatMessage {
   id: string
   role: 'user' | 'agent'
   text: string
-  response?: AgentResponse
   loading?: boolean
+  streaming?: boolean
 }
 
 export interface AgentChatDrawerProps {
   open: boolean
   onClose: () => void
   initialQuestion?: string
+  currentCountry: string
+}
+
+function AgentAvatar() {
+  return (
+    <div style={{
+      width: 28, height: 28, borderRadius: 8, flexShrink: 0,
+      background: 'linear-gradient(135deg, var(--gold-tint), var(--gold-wash))',
+      border: '1px solid var(--line)',
+      display: 'grid', placeItems: 'center', color: 'var(--gold-2)',
+    }}>
+      <Icon name="diamond" size={12} />
+    </div>
+  )
 }
 
 function LoadingBubble() {
@@ -145,100 +62,54 @@ function LoadingBubble() {
   )
 }
 
-function AgentAvatar() {
-  return (
-    <div style={{
-      width: 28, height: 28, borderRadius: 8, flexShrink: 0,
-      background: 'linear-gradient(135deg, var(--gold-tint), var(--gold-wash))',
-      border: '1px solid var(--line)',
-      display: 'grid', placeItems: 'center', color: 'var(--gold-2)',
-    }}>
-      <Icon name="diamond" size={12} />
-    </div>
-  )
-}
-
 function AgentBubble({ msg }: { msg: ChatMessage }) {
-  const r = msg.response
   return (
     <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
       <AgentAvatar />
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 7 }}>
-        <div style={{
-          padding: '12px 14px',
-          background: 'var(--pearl)', border: '1px solid var(--line-soft)', borderRadius: '4px 12px 12px 12px',
-          fontSize: 13.5, color: 'var(--ink-1)', lineHeight: 1.65,
-        }}>
-          {msg.text}
-        </div>
-
-        {r && (
-          <>
-            <div style={{
-              padding: '10px 14px',
-              background: 'rgba(250,242,221,.5)', border: '1px solid var(--line-soft)', borderRadius: 10,
-              fontSize: 12.5, color: 'var(--ink-2)', lineHeight: 1.6,
-            }}>
-              <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--ink-4)', letterSpacing: '.12em', textTransform: 'uppercase', marginBottom: 4 }}>判断依据</div>
-              {r.basis}
-            </div>
-
-            <div style={{
-              padding: '10px 14px',
-              background: 'var(--ivory)', border: '1px solid var(--line-soft)', borderRadius: 10,
-            }}>
-              <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--ink-4)', letterSpacing: '.12em', textTransform: 'uppercase', marginBottom: 8 }}>相关事件</div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-                {r.events.map((ev, i) => (
-                  <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 12.5, color: 'var(--ink-2)', lineHeight: 1.45 }}>
-                    <span style={{ width: 5, height: 5, borderRadius: 3, marginTop: 5, background: 'var(--gold-2)', flexShrink: 0 }} />
-                    {ev}
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div style={{
-              padding: '8px 12px',
-              border: '1px dashed var(--line-strong)', borderRadius: 8,
-              display: 'flex', flexWrap: 'wrap', gap: 5, alignItems: 'center',
-            }}>
-              <span style={{ fontSize: 10, color: 'var(--ink-4)', fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', lineHeight: '18px', flexShrink: 0 }}>来源</span>
-              {r.sources.map((src, i) => (
-                <span key={i} style={{
-                  padding: '2px 8px', borderRadius: 20,
-                  background: 'var(--gold-wash)', border: '1px solid var(--line-soft)',
-                  fontSize: 10.5, color: 'var(--ink-3)',
-                }}>{src}</span>
-              ))}
-            </div>
-
-            <div style={{
-              padding: '10px 14px',
-              background: 'linear-gradient(135deg, rgba(122,157,126,.08), rgba(122,157,126,.03))',
-              border: '1px solid rgba(122,157,126,.25)', borderRadius: 10,
-              fontSize: 12.5, color: 'var(--sage-deep)', lineHeight: 1.6,
-            }}>
-              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', marginBottom: 4, opacity: .8 }}>建议下一步</div>
-              {r.nextStep}
-            </div>
-          </>
+      <div style={{
+        flex: 1,
+        padding: '12px 14px',
+        background: 'var(--pearl)', border: '1px solid var(--line-soft)', borderRadius: '4px 12px 12px 12px',
+        fontSize: 13.5, color: 'var(--ink-1)', lineHeight: 1.65,
+        whiteSpace: 'pre-wrap', wordBreak: 'break-word',
+      }}>
+        {msg.text}
+        {msg.streaming && (
+          <span style={{
+            display: 'inline-block', width: 8, height: 14,
+            background: 'var(--gold-2)', marginLeft: 2, verticalAlign: 'text-bottom',
+            animation: 'agent-pulse 0.8s ease infinite',
+          }} />
         )}
       </div>
     </div>
   )
 }
 
-export default function AgentChatDrawer({ open, onClose, initialQuestion }: AgentChatDrawerProps) {
+export default function AgentChatDrawer({ open, onClose, initialQuestion, currentCountry }: AgentChatDrawerProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [input, setInput] = useState('')
+  const [selected, setSelected] = useState<Set<ChipId>>(new Set())
+  const [chipCache, setChipCache] = useState<Map<ChipId, string>>(new Map())
+  const [chipLoading, setChipLoading] = useState<Set<ChipId>>(new Set())
+  const [chipError, setChipError] = useState<Set<ChipId>>(new Set())
+  const [inlineError, setInlineError] = useState('')
   const scrollRef = useRef<HTMLDivElement>(null)
+  const sessionIdRef = useRef<string | null>(null)
+  const streamingRef = useRef(false)
   const didSendRef = useRef(false)
 
   useEffect(() => {
     if (open) {
       setMessages([])
       setInput('')
+      setSelected(new Set())
+      setChipCache(new Map())
+      setChipLoading(new Set())
+      setChipError(new Set())
+      setInlineError('')
+      sessionIdRef.current = null
+      streamingRef.current = false
       didSendRef.current = false
     }
   }, [open])
@@ -248,6 +119,7 @@ export default function AgentChatDrawer({ open, onClose, initialQuestion }: Agen
       didSendRef.current = true
       doSend(initialQuestion)
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, initialQuestion])
 
   useEffect(() => {
@@ -256,26 +128,132 @@ export default function AgentChatDrawer({ open, onClose, initialQuestion }: Agen
     }
   }, [messages])
 
-  function doSend(text: string) {
+  const handleChipClick = useCallback(async (id: ChipId) => {
+    const def = CHIP_DEFS.find(d => d.id === id)!
+    const isSelecting = !selected.has(id)
+
+    // 联动：选 correlation → 自动选 priority
+    const newSelected = new Set(selected)
+    if (isSelecting) {
+      newSelected.add(id)
+      if (id === 'correlation' && !newSelected.has('priority')) {
+        newSelected.add('priority')
+      }
+    } else {
+      newSelected.delete(id)
+    }
+    setSelected(newSelected)
+    setInlineError('')
+
+    // 需要拉数据且未缓存
+    if (isSelecting && def.needsFetch && !chipCache.has(id)) {
+      setChipLoading(prev => new Set([...prev, id]))
+      setChipError(prev => { const s = new Set(prev); s.delete(id); return s })
+      try {
+        const text = await buildChipContext(id, currentCountry)
+        setChipCache(prev => new Map([...prev, [id, text]]))
+      } catch {
+        setChipError(prev => new Set([...prev, id]))
+        setSelected(prev => { const s = new Set(prev); s.delete(id); return s })
+      } finally {
+        setChipLoading(prev => { const s = new Set(prev); s.delete(id); return s })
+      }
+    }
+
+    // 若 priority 因 correlation 联动需要拉
+    if (isSelecting && id === 'correlation' && !chipCache.has('priority')) {
+      setChipLoading(prev => new Set([...prev, 'priority']))
+      try {
+        const text = await buildChipContext('priority', currentCountry)
+        setChipCache(prev => new Map([...prev, ['priority', text]]))
+      } catch {
+        setChipError(prev => new Set([...prev, 'priority']))
+      } finally {
+        setChipLoading(prev => { const s = new Set(prev); s.delete('priority'); return s })
+      }
+    }
+  }, [selected, chipCache, currentCountry])
+
+  const doSend = useCallback(async (text: string) => {
     const q = text.trim()
-    if (!q) return
-    const loadingId = String(Date.now()) + '-a'
+    if (!q || streamingRef.current) return
+    setInlineError('')
+
+    // 组装 chip 上下文块（发给后端但UI只显示用户原始文字）
+    const ctxBlocks = [...selected]
+      .filter(id => id !== 'correlation')
+      .map(id => chipCache.get(id))
+      .filter(Boolean) as string[]
+
+    const userContent = ctxBlocks.length
+      ? ctxBlocks.join('\n\n') + '\n\n## 提问\n' + q
+      : q
+
+    const agentType: AgentType = selected.has('correlation') ? 'correlation_analysis' : 'general_chat'
+
+    // 关联分析校验 ≥3 个事件 ID
+    if (agentType === 'correlation_analysis') {
+      const ids = userContent.match(/#\d{1,6}/g) ?? []
+      if (ids.length < 3) {
+        setInlineError('关联分析需至少 3 条事件，请先选中「高优先级事件」chip')
+        return
+      }
+    }
+
+    const userMsgId = `${Date.now()}-u`
+    const agentMsgId = `${Date.now()}-a`
+
+    // 组装多轮历史（UI text，非上下文注入版）
+    const history = messages
+      .filter(m => !m.loading && !m.streaming && m.text)
+      .map(m => ({ role: m.role === 'user' ? 'user' as const : 'assistant' as const, content: m.text }))
+    history.push({ role: 'user', content: userContent })
 
     setMessages(prev => [
       ...prev,
-      { id: String(Date.now()) + '-u', role: 'user', text: q },
-      { id: loadingId, role: 'agent', text: '', loading: true },
+      { id: userMsgId, role: 'user', text: q },
+      { id: agentMsgId, role: 'agent', text: '', loading: true },
     ])
 
-    setTimeout(() => {
-      const response = CANNED[q] ?? FALLBACK
+    streamingRef.current = true
+    let started = false
+
+    try {
+      for await (const chunk of streamAgent({
+        type: agentType,
+        sessionId: sessionIdRef.current,
+        messages: history,
+      })) {
+        if (chunk.sessionId) sessionIdRef.current = chunk.sessionId
+        if (chunk.done) break
+        if (chunk.error) {
+          setMessages(prev => prev.map(m =>
+            m.id === agentMsgId
+              ? { ...m, loading: false, streaming: false, text: `（请求失败）${chunk.error}` }
+              : m
+          ))
+          break
+        }
+        if (chunk.content) {
+          if (!started) {
+            started = true
+            setMessages(prev => prev.map(m =>
+              m.id === agentMsgId ? { ...m, loading: false, streaming: true, text: chunk.content! } : m
+            ))
+          } else {
+            setMessages(prev => prev.map(m =>
+              m.id === agentMsgId ? { ...m, text: m.text + chunk.content! } : m
+            ))
+          }
+        }
+      }
+    } finally {
+      streamingRef.current = false
       setMessages(prev => prev.map(m =>
-        m.id === loadingId
-          ? { ...m, loading: false, text: response.conclusion, response }
-          : m
+        m.id === agentMsgId ? { ...m, loading: false, streaming: false } : m
       ))
-    }, 900)
-  }
+    }
+  }, [messages, selected, chipCache])
 
   function handleSend() {
     const q = input.trim()
@@ -340,13 +318,40 @@ export default function AgentChatDrawer({ open, onClose, initialQuestion }: Agen
 
           {/* Context chips */}
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 12 }}>
-            {CONTEXT_CHIPS.map(chip => (
-              <span key={chip} style={{
-                padding: '3px 10px', borderRadius: 20,
-                background: 'var(--gold-wash)', border: '1px solid var(--line)',
-                fontSize: 11, color: 'var(--ink-2)', fontWeight: 500,
-              }}>{chip}</span>
-            ))}
+            {CHIP_DEFS.map(def => {
+              const isSelected = selected.has(def.id)
+              const isLoading = chipLoading.has(def.id)
+              const hasError = chipError.has(def.id)
+              return (
+                <button
+                  key={def.id}
+                  onClick={() => handleChipClick(def.id)}
+                  title={hasError ? '加载失败，点击重试' : undefined}
+                  style={{
+                    padding: '3px 10px', borderRadius: 20,
+                    background: isSelected ? 'var(--gold-tint)' : 'var(--gold-wash)',
+                    border: `1px solid ${isSelected ? 'var(--gold-2)' : hasError ? '#c0392b' : 'var(--line)'}`,
+                    fontSize: 11, color: isSelected ? 'var(--ink-1)' : hasError ? '#c0392b' : 'var(--ink-2)',
+                    fontWeight: isSelected ? 600 : 500,
+                    cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', gap: 4,
+                    transition: 'all .15s ease',
+                  }}
+                >
+                  {isLoading && (
+                    <span style={{
+                      width: 8, height: 8, borderRadius: 4,
+                      border: '1.5px solid var(--gold-2)',
+                      borderTopColor: 'transparent',
+                      display: 'inline-block',
+                      animation: 'spin 0.7s linear infinite',
+                    }} />
+                  )}
+                  {hasError && !isLoading && <span>✕</span>}
+                  {def.label(currentCountry)}
+                </button>
+              )
+            })}
           </div>
         </div>
 
@@ -397,11 +402,20 @@ export default function AgentChatDrawer({ open, onClose, initialQuestion }: Agen
 
         {/* Input bar */}
         <div style={{
-          padding: '12px 16px',
+          padding: '10px 16px 12px',
           borderTop: '1px solid var(--line-soft)',
           background: 'var(--pearl)',
           flexShrink: 0,
         }}>
+          {inlineError && (
+            <div style={{
+              marginBottom: 8, padding: '6px 10px', borderRadius: 8,
+              background: 'rgba(192,57,43,.06)', border: '1px solid rgba(192,57,43,.2)',
+              fontSize: 11.5, color: '#c0392b',
+            }}>
+              {inlineError}
+            </div>
+          )}
           <div style={{ display: 'flex', gap: 8 }}>
             <input
               value={input}
@@ -418,14 +432,19 @@ export default function AgentChatDrawer({ open, onClose, initialQuestion }: Agen
               onFocus={e => (e.target.style.borderColor = 'var(--line-strong)')}
               onBlur={e => (e.target.style.borderColor = 'var(--line)')}
             />
-            <button onClick={handleSend} style={{
-              padding: '10px 18px',
-              background: 'linear-gradient(135deg, var(--gold-3), var(--gold-1))',
-              border: '1px solid var(--gold-2)', borderRadius: 10,
-              fontSize: 13, fontWeight: 700, color: 'var(--pearl)',
-              cursor: 'pointer', whiteSpace: 'nowrap',
-              boxShadow: '0 2px 8px rgba(184,145,80,.2)',
-            }}>Send</button>
+            <button
+              onClick={handleSend}
+              disabled={streamingRef.current}
+              style={{
+                padding: '10px 18px',
+                background: 'linear-gradient(135deg, var(--gold-3), var(--gold-1))',
+                border: '1px solid var(--gold-2)', borderRadius: 10,
+                fontSize: 13, fontWeight: 700, color: 'var(--pearl)',
+                cursor: streamingRef.current ? 'not-allowed' : 'pointer',
+                whiteSpace: 'nowrap',
+                boxShadow: '0 2px 8px rgba(184,145,80,.2)',
+                opacity: streamingRef.current ? 0.6 : 1,
+              }}>Send</button>
           </div>
         </div>
       </div>

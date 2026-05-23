@@ -142,6 +142,25 @@ class DashScopeLLM:
             if delta.content:
                 yield delta.content
 
+    def chat_stream_messages(
+        self,
+        *,
+        messages: list[dict[str, Any]],
+        model: str | None = None,
+        temperature: float = 0.3,
+    ) -> Generator[str, None, None]:
+        """多轮流式 chat — 接受完整 messages 数组（含 system/user/assistant 历史）。"""
+        stream = self.client.chat.completions.create(
+            model=model or settings.DASHSCOPE_MODEL_SUMMARY,
+            messages=messages,
+            temperature=temperature,
+            stream=True,
+        )
+        for chunk in stream:
+            delta = chunk.choices[0].delta
+            if delta.content:
+                yield delta.content
+
     # ---- tool-calling (function calling) ----------------------------------
     def chat_with_tools(
         self,

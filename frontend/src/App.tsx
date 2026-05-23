@@ -90,6 +90,7 @@ export default function App() {
         open={agentChatOpen}
         onClose={() => setAgentChatOpen(false)}
         initialQuestion={agentChatQuestion}
+        currentCountry={filters.country}
       />
     </div>
   )
