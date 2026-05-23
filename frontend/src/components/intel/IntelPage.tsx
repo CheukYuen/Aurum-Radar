@@ -4,6 +4,7 @@ import IntelDetail from './IntelDetail'
 import Icon from '../ui/Icon'
 import { fetchEvents, fetchDashboardSummary } from '../../api'
 import type { DashboardSummary, IntelEvent } from '../../api'
+import type { Filters } from '../../api/types'
 
 const TABS = ['全部', '竞争', '产品', '社媒', '法规', '渠道', '宏观', '供应链']
 
@@ -39,22 +40,31 @@ function StatCard({ icon, label, value, unit, delta, deltaKind = 'sage', sub }: 
   )
 }
 
-export default function IntelPage() {
+export default function IntelPage({ filters }: { filters: Filters }) {
   const [tab, setTab] = useState('全部')
   const [events, setEvents] = useState<IntelEvent[]>([])
   const [activeId, setActiveId] = useState<string>('')
   const [summary, setSummary] = useState<DashboardSummary | null>(null)
 
   useEffect(() => {
-    fetchDashboardSummary().then(setSummary).catch(console.error)
-  }, [])
+    let cancelled = false
+    fetchDashboardSummary(filters.country).then(s => {
+      if (cancelled) return
+      setSummary(s)
+    }).catch(console.error)
+    return () => { cancelled = true }
+  }, [filters.country])
 
   useEffect(() => {
-    fetchEvents(tab).then(res => {
+    let cancelled = false
+    setActiveId('')
+    fetchEvents(tab, 1, 20, filters.country).then(res => {
+      if (cancelled) return
       setEvents(res.items)
-      if (!activeId && res.items.length > 0) setActiveId(res.items[0]!.id)
+      if (res.items.length > 0) setActiveId(res.items[0]!.id)
     }).catch(console.error)
-  }, [tab])
+    return () => { cancelled = true }
+  }, [tab, filters.country])
 
   const active = events.find(e => e.id === activeId) ?? events[0]
 

@@ -59,8 +59,8 @@ export default function App() {
         onCountryChange={handleCountryChange}
       />
     ),
-    intel:    <IntelPage />,
-    actions:  <ActionsPage activeDept={activeDept} onDeptChange={setActiveDept} />,
+    intel:    <IntelPage filters={filters} />,
+    actions:  <ActionsPage activeDept={activeDept} onDeptChange={setActiveDept} filters={filters} />,
   }[page]
 
   return (
@@ -83,6 +83,7 @@ export default function App() {
         onClose={() => setBriefingOpen(false)}
         onNavToActions={(deptId) => { setActiveDept(deptId); handleNav('actions'); setBriefingOpen(false) }}
         onOpenAgentChat={openAgentChat}
+        filters={filters}
       />
       <AgentChatDrawer
         key={agentChatKey}

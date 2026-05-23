@@ -2,13 +2,14 @@ import { useEffect, useState } from 'react'
 import Icon from '../ui/Icon'
 import { fetchLatestBrief } from '../../api'
 
-import type { DailyBrief } from '../../api/types'
+import type { DailyBrief, Filters } from '../../api/types'
 
 interface DailyBriefingDrawerProps {
   open: boolean
   onClose: () => void
   onNavToActions: (deptId: string) => void
   onOpenAgentChat: (q?: string) => void
+  filters: Filters
 }
 
 // ── Section header ───────────────────────────────────────────────
@@ -111,16 +112,21 @@ function ImpactCard({ kind, text, delay }: { kind: 'opportunity' | 'risk' | 'wat
 }
 
 // ── Drawer ───────────────────────────────────────────────────────
-export default function DailyBriefingDrawer({ open, onClose, onNavToActions, onOpenAgentChat }: DailyBriefingDrawerProps) {
+export default function DailyBriefingDrawer({ open, onClose, onNavToActions, onOpenAgentChat, filters }: DailyBriefingDrawerProps) {
   const [brief, setBrief] = useState<DailyBrief | null>(null)
 
   useEffect(() => {
     if (!open) return
-    fetchLatestBrief().then(setBrief).catch(error => {
+    let cancelled = false
+    fetchLatestBrief(filters.country).then(b => {
+      if (cancelled) return
+      setBrief(b)
+    }).catch(error => {
       console.error(error)
-      setBrief(null)
+      if (!cancelled) setBrief(null)
     })
-  }, [open])
+    return () => { cancelled = true }
+  }, [open, filters.country])
 
   if (!open) return null
 
