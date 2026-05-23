@@ -11,6 +11,7 @@ import hashlib
 import json
 import urllib.parse
 from datetime import datetime, timezone
+from email.utils import parsedate_to_datetime
 from pathlib import Path
 
 from loguru import logger
@@ -226,9 +227,33 @@ def _normalize_source_type(value: str) -> SourceType:
 
 
 def _parse_dt(value: str | None) -> datetime | None:
+    """Parse the four timestamp formats data_probe emits, normalised to UTC.
+
+    - ISO 8601 (federal_register: ``2026-05-04``; reddit: ``2026-05-23T02:35:25+00:00``)
+    - RFC 2822 (google_news_rss / tavily: ``Wed, 08 Apr 2026 02:52:11 GMT``)
+    - GDELT compact (``20260522T134500Z``)
+    """
     if not value:
         return None
-    try:
-        return datetime.fromisoformat(value.replace("Z", "+00:00"))
-    except ValueError:
+    s = value.strip()
+    if not s:
         return None
+    try:
+        dt = datetime.fromisoformat(s.replace("Z", "+00:00"))
+    except ValueError:
+        dt = None
+    if dt is None and "," in s:
+        try:
+            dt = parsedate_to_datetime(s)
+        except (TypeError, ValueError):
+            dt = None
+    if dt is None and len(s) == 16 and s[8] == "T" and s.endswith("Z"):
+        try:
+            dt = datetime.strptime(s, "%Y%m%dT%H%M%SZ").replace(tzinfo=timezone.utc)
+        except ValueError:
+            dt = None
+    if dt is None:
+        return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc)

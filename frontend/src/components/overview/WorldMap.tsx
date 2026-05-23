@@ -50,7 +50,7 @@ interface WorldMapProps {
 }
 
 export default function WorldMap({ selected, countries, onSelect }: WorldMapProps) {
-  const hub = countries.find(c => c.id === 'Singapore') ?? countries[0]
+  const hub = countries.find(c => c.id === 'SG') ?? countries[0]
 
   return (
     <svg viewBox="0 0 1600 780" style={{ width: '100%', height: '100%', display: 'block' }}>

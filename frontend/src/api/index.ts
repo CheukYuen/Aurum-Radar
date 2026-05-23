@@ -226,20 +226,37 @@ function hostFromUrl(value: unknown): string {
   }
 }
 
+// All aliases normalize to the canonical ISO-3166 alpha-2 code used by the
+// backend. New markets only need an entry in MARKET_LAYOUT — add aliases
+// here only when the source data uses a non-ISO form (long name, Chinese).
 const MARKET_ALIASES: Record<string, string> = {
-  sg: 'Singapore',
-  singapore: 'Singapore',
-  新加坡: 'Singapore',
-  th: 'Thailand',
-  thailand: 'Thailand',
-  泰国: 'Thailand',
-  jp: 'Japan',
-  japan: 'Japan',
-  日本: 'Japan',
+  singapore: 'SG',
+  新加坡: 'SG',
+  thailand: 'TH',
+  泰国: 'TH',
+  japan: 'JP',
+  日本: 'JP',
+  korea: 'KR',
+  韩国: 'KR',
+  indonesia: 'ID',
+  印尼: 'ID',
+  malaysia: 'MY',
+  马来西亚: 'MY',
+  vietnam: 'VN',
+  越南: 'VN',
+  philippines: 'PH',
+  菲律宾: 'PH',
+  usa: 'US',
+  美国: 'US',
+  global: 'GLOBAL',
+  全球: 'GLOBAL',
 }
 
 function normalizeMarket(value: string): string {
-  return MARKET_ALIASES[value.trim().toLowerCase()] ?? MARKET_ALIASES[value.trim()] ?? value
+  const trimmed = value.trim()
+  // already-canonical ISO codes are kept as-is (upper-case)
+  if (MARKET_LAYOUT[trimmed.toUpperCase()]) return trimmed.toUpperCase()
+  return MARKET_ALIASES[trimmed.toLowerCase()] ?? MARKET_ALIASES[trimmed] ?? trimmed
 }
 
 function marketName(market: string): string {
@@ -414,6 +431,8 @@ export async function fetchEventDetail(eventId: string): Promise<IntelEvent> {
 
 export interface DashboardSummary {
   as_of: string
+  window_days?: number
+  since?: string
   radar: {
     markets_scanned: number
     documents_integrated: number

@@ -16,14 +16,51 @@ from app.schemas.enums import (
 )
 
 # --- markets (MVP scope: architecture.md §1) -------------------------------
-MVP_MARKETS: list[str] = ["Singapore", "Thailand", "Japan"]
+# Market codes are ISO-3166 alpha-2 (plus the synthetic "GLOBAL" bucket for
+# multi-region or global-scope sources). data_probe writes these directly,
+# the council / dashboard / frontend read these. Display names live in
+# MARKET_DISPLAY_NAME so the UI can render the human-readable form.
+MVP_MARKETS: list[str] = [
+    "SG", "TH", "JP", "US", "KR", "ID", "MY", "VN", "PH", "GLOBAL",
+]
 
 MARKET_REGION: dict[str, str] = {
-    "Singapore": "Southeast Asia",
-    "Thailand": "Southeast Asia",
-    "Japan": "East Asia",
-    # TODO: extend when more markets enter scope (PRD §5.2)
+    "SG": "Southeast Asia",
+    "TH": "Southeast Asia",
+    "ID": "Southeast Asia",
+    "MY": "Southeast Asia",
+    "VN": "Southeast Asia",
+    "PH": "Southeast Asia",
+    "JP": "East Asia",
+    "KR": "East Asia",
+    "CN": "East Asia",
+    "US": "North America",
+    "IN": "South Asia",
+    "GLOBAL": "Global",
 }
+
+# Human-readable display names — frontend prefers Chinese, falls back to code.
+MARKET_DISPLAY_NAME: dict[str, str] = {
+    "SG": "新加坡",
+    "TH": "泰国",
+    "JP": "日本",
+    "US": "美国",
+    "KR": "韩国",
+    "ID": "印尼",
+    "MY": "马来西亚",
+    "VN": "越南",
+    "PH": "菲律宾",
+    "CN": "中国",
+    "IN": "印度",
+    "GLOBAL": "全球",
+}
+
+# Minimum raw_documents in the window before a market is worth running the
+# council on — avoids burning LLM cost on markets with 1-2 stray articles.
+MIN_DOCS_PER_MARKET: int = 10
+
+# Default rolling window for dashboard + run_council queries (architecture.md §7).
+DEFAULT_WINDOW_DAYS: int = 30
 
 # --- relevance filter (stage 2) --------------------------------------------
 # A document must mention at least one of these to be jewellery-relevant.
@@ -228,3 +265,8 @@ LAG_RECENCY_WEIGHT: dict[str, float] = {
 def region_for(market: str) -> str:
     """Best-effort region lookup for a market."""
     return MARKET_REGION.get(market, "Unknown")
+
+
+def display_name_for(market: str) -> str:
+    """Human-readable name for a market code; falls back to the code."""
+    return MARKET_DISPLAY_NAME.get(market, market)

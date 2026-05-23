@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import distinct, func
 from sqlalchemy.orm import Session
 
@@ -15,7 +15,7 @@ from app.models import (
     MarketSnapshot,
     RawDocument,
 )
-from app.services.taxonomy import MVP_MARKETS, region_for
+from app.services.taxonomy import DEFAULT_WINDOW_DAYS, MVP_MARKETS, region_for
 
 router = APIRouter()
 
@@ -24,16 +24,20 @@ def _iso(value: datetime | date | None) -> str | None:
     return value.isoformat() if value else None
 
 
-def _latest_snapshots(db: Session) -> list[MarketSnapshot]:
-    rows = (
-        db.query(MarketSnapshot)
-        .order_by(
-            MarketSnapshot.market.asc(),
-            MarketSnapshot.snapshot_date.desc().nullslast(),
-            MarketSnapshot.id.desc(),
-        )
-        .all()
-    )
+def _window_cutoff(window_days: int) -> datetime:
+    """UTC datetime ``window_days`` ago — the lower bound on dashboard data."""
+    return datetime.now(timezone.utc) - timedelta(days=window_days)
+
+
+def _latest_snapshots(db: Session, since: datetime | None = None) -> list[MarketSnapshot]:
+    q = db.query(MarketSnapshot)
+    if since:
+        q = q.filter(MarketSnapshot.created_at >= since)
+    rows = q.order_by(
+        MarketSnapshot.market.asc(),
+        MarketSnapshot.snapshot_date.desc().nullslast(),
+        MarketSnapshot.id.desc(),
+    ).all()
     seen: set[str] = set()
     latest: list[MarketSnapshot] = []
     for row in rows:
@@ -51,13 +55,13 @@ def _snapshot_headline(snapshot: MarketSnapshot) -> str:
     return snapshot.overall_judgement or ""
 
 
-def _market_from_events(db: Session, market: str) -> dict | None:
-    rows = (
-        db.query(IntelligenceEvent)
-        .filter(IntelligenceEvent.market == market)
-        .order_by(IntelligenceEvent.created_at.desc())
-        .all()
-    )
+def _market_from_events(
+    db: Session, market: str, since: datetime | None = None
+) -> dict | None:
+    q = db.query(IntelligenceEvent).filter(IntelligenceEvent.market == market)
+    if since:
+        q = q.filter(IntelligenceEvent.created_at >= since)
+    rows = q.order_by(IntelligenceEvent.created_at.desc()).all()
     if not rows:
         return None
     opportunity = round(sum(e.opportunity_score or 0 for e in rows) / len(rows))
@@ -74,51 +78,89 @@ def _market_from_events(db: Session, market: str) -> dict | None:
 
 
 @router.get("/dashboard/summary")
-def get_dashboard_summary(db: Session = Depends(get_db)):
-    events_total = db.query(func.count(IntelligenceEvent.id)).scalar() or 0
-    raw_total = db.query(func.count(RawDocument.id)).scalar() or 0
+def get_dashboard_summary(
+    db: Session = Depends(get_db),
+    window_days: int = Query(DEFAULT_WINDOW_DAYS, ge=1, le=365, alias="window_days"),
+):
+    cutoff = _window_cutoff(window_days)
+    events_total = (
+        db.query(func.count(IntelligenceEvent.id))
+        .filter(IntelligenceEvent.created_at >= cutoff)
+        .scalar()
+        or 0
+    )
+    raw_total = (
+        db.query(func.count(RawDocument.id))
+        .filter(RawDocument.created_at >= cutoff)
+        .scalar()
+        or 0
+    )
     high_priority = (
         db.query(func.count(IntelligenceEvent.id))
         .filter(IntelligenceEvent.priority.in_(("P0", "P1", "high")))
+        .filter(IntelligenceEvent.created_at >= cutoff)
         .scalar()
         or 0
     )
     pending_actions = (
         db.query(func.count(ActionItem.id))
         .filter(ActionItem.status.in_(("pending", "in_progress")))
+        .filter(ActionItem.created_at >= cutoff)
         .scalar()
         or 0
     )
-    latest_event_at = db.query(func.max(IntelligenceEvent.created_at)).scalar()
-    latest_snapshot_at = db.query(func.max(MarketSnapshot.created_at)).scalar()
+    latest_event_at = (
+        db.query(func.max(IntelligenceEvent.created_at))
+        .filter(IntelligenceEvent.created_at >= cutoff)
+        .scalar()
+    )
+    latest_snapshot_at = (
+        db.query(func.max(MarketSnapshot.created_at))
+        .filter(MarketSnapshot.created_at >= cutoff)
+        .scalar()
+    )
     as_of = latest_snapshot_at or latest_event_at or datetime.now(timezone.utc)
 
     markets_scanned = (
-        db.query(func.count(distinct(MarketSnapshot.market))).scalar()
-        or db.query(func.count(distinct(IntelligenceEvent.market))).scalar()
+        db.query(func.count(distinct(MarketSnapshot.market)))
+        .filter(MarketSnapshot.created_at >= cutoff)
+        .scalar()
+        or db.query(func.count(distinct(IntelligenceEvent.market)))
+        .filter(IntelligenceEvent.created_at >= cutoff)
+        .scalar()
         or 0
     )
-    judgments_generated = db.query(func.count(MarketSnapshot.id)).scalar() or 0
+    judgments_generated = (
+        db.query(func.count(MarketSnapshot.id))
+        .filter(MarketSnapshot.created_at >= cutoff)
+        .scalar()
+        or 0
+    )
     opportunities = (
         db.query(func.count(IntelligenceEvent.id))
         .filter(IntelligenceEvent.signal_direction == "positive")
+        .filter(IntelligenceEvent.created_at >= cutoff)
         .scalar()
         or 0
     )
     competition = (
         db.query(func.count(IntelligenceEvent.id))
         .filter(IntelligenceEvent.source_category == "competition")
+        .filter(IntelligenceEvent.created_at >= cutoff)
         .scalar()
         or 0
     )
     regulation = (
         db.query(func.count(IntelligenceEvent.id))
         .filter(IntelligenceEvent.source_category == "regulation")
+        .filter(IntelligenceEvent.created_at >= cutoff)
         .scalar()
         or 0
     )
     return {
         "as_of": _iso(as_of),
+        "window_days": window_days,
+        "since": _iso(cutoff),
         "radar": {
             "markets_scanned": markets_scanned,
             "documents_integrated": raw_total,
@@ -139,8 +181,12 @@ def get_dashboard_summary(db: Session = Depends(get_db)):
 
 
 @router.get("/overview")
-def get_overview(db: Session = Depends(get_db)):
-    snapshots = _latest_snapshots(db)
+def get_overview(
+    db: Session = Depends(get_db),
+    window_days: int = Query(DEFAULT_WINDOW_DAYS, ge=1, le=365, alias="window_days"),
+):
+    cutoff = _window_cutoff(window_days)
+    snapshots = _latest_snapshots(db, since=cutoff)
     markets = [
         {
             "market": s.market,
@@ -155,26 +201,38 @@ def get_overview(db: Session = Depends(get_db)):
         if s.market
     ]
 
+    # Fallback: no snapshots within the window — derive from events directly.
     if not markets:
         for market in MVP_MARKETS:
-            item = _market_from_events(db, market)
+            item = _market_from_events(db, market, since=cutoff)
             if item:
                 markets.append(item)
 
     latest_date = snapshots[0].snapshot_date if snapshots else None
-    return {"as_of": _iso(latest_date) or _iso(datetime.now(timezone.utc)), "markets": markets}
+    return {
+        "as_of": _iso(latest_date) or _iso(datetime.now(timezone.utc)),
+        "window_days": window_days,
+        "since": _iso(cutoff),
+        "markets": markets,
+    }
 
 
 @router.get("/markets/{market}")
-def get_market(market: str, db: Session = Depends(get_db)):
+def get_market(
+    market: str,
+    db: Session = Depends(get_db),
+    window_days: int = Query(DEFAULT_WINDOW_DAYS, ge=1, le=365, alias="window_days"),
+):
+    cutoff = _window_cutoff(window_days)
     snapshot = (
         db.query(MarketSnapshot)
         .filter(MarketSnapshot.market == market)
+        .filter(MarketSnapshot.created_at >= cutoff)
         .order_by(MarketSnapshot.snapshot_date.desc().nullslast(), MarketSnapshot.id.desc())
         .first()
     )
     if snapshot is None:
-        derived = _market_from_events(db, market)
+        derived = _market_from_events(db, market, since=cutoff)
         if derived is None:
             raise HTTPException(status_code=404, detail="Market not found")
         return {

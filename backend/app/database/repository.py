@@ -11,9 +11,11 @@ Idempotency (stages are re-runnable, architecture.md §7):
 """
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from enum import Enum
 
+from loguru import logger
+from sqlalchemy import func as sql_func
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session
 
@@ -47,6 +49,99 @@ def _iso(value: datetime | date | None) -> str | None:
 
 # --- stage 2: raw_documents -------------------------------------------------
 
+def list_markets_with_docs(
+    db: Session,
+    *,
+    since: datetime | None = None,
+    until: datetime | None = None,
+    min_docs: int = 1,
+) -> list[tuple[str, int]]:
+    """Discover (market, doc_count) pairs from raw_documents.
+
+    Used by ``run_council --all-markets`` to figure out which markets are
+    worth running. Window filter is ``COALESCE(published_at, fetched_at)``
+    — falls back to fetched_at for rows where the source legitimately has
+    no publication timestamp (google_trends aggregates, gdelt failed-query
+    placeholders, ecommerce/baidu failed scrapes).
+    """
+    from sqlalchemy import func as sql_func
+
+    ts = sql_func.coalesce(RawDocument.published_at, RawDocument.fetched_at)
+    q = (
+        db.query(RawDocument.market, sql_func.count(RawDocument.id))
+        .filter(RawDocument.market.isnot(None))
+        .filter(RawDocument.content_hash.isnot(None))
+    )
+    if since:
+        q = q.filter(ts >= since)
+    if until:
+        q = q.filter(ts <= until)
+    q = q.group_by(RawDocument.market).having(sql_func.count(RawDocument.id) >= min_docs)
+    return [(m, c) for m, c in q.order_by(sql_func.count(RawDocument.id).desc()).all()]
+
+
+def list_raw_documents(
+    db: Session,
+    *,
+    market: str | None = None,
+    since: datetime | None = None,
+    until: datetime | None = None,
+    limit: int | None = None,
+) -> tuple[list[RawDocumentIn], dict[str, int]]:
+    """Read raw_documents from RDS as pipeline-ready ``RawDocumentIn`` objects.
+
+    Returns ``(docs, hash_id_map)`` so the caller can skip stages 1-2 (ingest
+    + clean) and feed Stage 3 directly. ``hash_id_map`` lets Stage 4 link
+    ``intelligence_events.raw_document_id`` to the existing rows.
+
+    Filters by ``market`` (exact), and ``published_at`` window via
+    ``since`` / ``until`` (UTC). Rows without ``content_hash`` are skipped —
+    they cannot be linked back at Stage 4.
+    """
+    from sqlalchemy import func as sql_func
+
+    ts = sql_func.coalesce(RawDocument.published_at, RawDocument.fetched_at)
+    q = db.query(RawDocument).filter(RawDocument.content_hash.isnot(None))
+    if market:
+        q = q.filter(RawDocument.market == market)
+    if since:
+        q = q.filter(ts >= since)
+    if until:
+        q = q.filter(ts <= until)
+    q = q.order_by(ts.desc().nullslast())
+    if limit:
+        q = q.limit(limit)
+
+    rows = q.all()
+    docs: list[RawDocumentIn] = []
+    hash_id_map: dict[str, int] = {}
+    for r in rows:
+        try:
+            docs.append(
+                RawDocumentIn(
+                    source_type=r.source_type or "news",
+                    source_name=r.source_name or "unknown",
+                    market=r.market or "",
+                    region=r.region,
+                    title=r.title or "",
+                    summary=r.summary,
+                    url=r.url or "",
+                    published_at=r.published_at,
+                    fetched_at=r.fetched_at or datetime.now(timezone.utc),
+                    language=r.language,
+                    raw_content=r.raw_content,
+                    clean_content=r.clean_content,
+                    content_hash=r.content_hash,
+                    oss_path=r.oss_path,
+                    credibility_level=r.credibility_level,
+                )
+            )
+            hash_id_map[r.content_hash] = r.id
+        except Exception as exc:  # noqa: BLE001 - skip malformed rows, don't abort
+            logger.warning(f"list_raw_documents: skip id={r.id}: {exc}")
+    return docs, hash_id_map
+
+
 def save_raw_documents(db: Session, docs: list[RawDocumentIn]) -> dict[str, int]:
     """Insert raw documents (skip content_hash dups); return content_hash -> id."""
     if not docs:
@@ -71,8 +166,16 @@ def save_raw_documents(db: Session, docs: list[RawDocumentIn]) -> dict[str, int]
         )
         for d in docs
     ]
-    stmt = pg_insert(RawDocument).values(rows).on_conflict_do_nothing(
-        index_elements=["content_hash"]
+    # On hash collision, backfill published_at when the existing row is NULL.
+    # Other columns are intentionally not touched — content_hash is stable, so
+    # the rest of the record is treated as already-good-enough.
+    stmt = pg_insert(RawDocument).values(rows)
+    stmt = stmt.on_conflict_do_update(
+        index_elements=["content_hash"],
+        set_={"published_at": sql_func.coalesce(
+            RawDocument.published_at, stmt.excluded.published_at
+        )},
+        where=RawDocument.published_at.is_(None),
     )
     db.execute(stmt)
     db.commit()

@@ -64,6 +64,7 @@ def run_pipeline(
     source_types: list[str] | None = None,
     stages: list[str] | None = None,
     seed_documents: list[RawDocumentIn] | None = None,
+    prefilled_hash_id_map: dict[str, int] | None = None,
     trigger_type: str = "manual",
     persist: bool = True,
 ) -> PipelineResult:
@@ -72,6 +73,12 @@ def run_pipeline(
     With ``persist=True`` each stage's output is written to the database and a
     job_runs row is recorded. ``seed_documents`` lets the pipeline run before
     the live providers are ported (see ingestion.load_seed_documents).
+
+    Pass ``prefilled_hash_id_map`` when ``seed_documents`` were already loaded
+    from ``raw_documents`` (e.g. via ``repository.list_raw_documents``). The
+    map (content_hash -> raw_documents.id) lets Stage 4 link
+    ``intelligence_events.raw_document_id`` without re-running clean / save.
+    Callers using this should typically skip stages ``ingest`` and ``clean``.
     """
     markets = markets or MVP_MARKETS
     stages = stages or ALL_STAGES
@@ -80,6 +87,11 @@ def run_pipeline(
     ctx.markets = markets
     if seed_documents:
         ctx.raw_documents = list(seed_documents)
+        # if the docs are already cleaned (came from RDS), make them available
+        # to Stage 3 even when the clean stage is skipped
+        ctx.clean_documents = list(seed_documents)
+    if prefilled_hash_id_map:
+        ctx.hash_id_map = dict(prefilled_hash_id_map)
 
     result = PipelineResult(
         job_name="agent_pipeline",
