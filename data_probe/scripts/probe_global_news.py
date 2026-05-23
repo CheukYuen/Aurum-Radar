@@ -27,6 +27,7 @@ from utils import (  # noqa: E402
     make_intelligence_record,
     primary_language,
     save_jsonl,
+    strip_html,
 )
 
 
@@ -94,7 +95,8 @@ def probe_global_news() -> list[dict]:
                 title = e.get("title", "") or ""
                 link = e.get("link", "") or url
                 published = e.get("published", "") or ""
-                summary = (e.get("summary", "") or "")[:500]
+                # GN RSS summary field contains HTML (<a>/<font> tags) — strip to plain text
+                summary = strip_html((e.get("summary", "") or ""))[:500]
 
                 src_obj = e.get("source", {})
                 if isinstance(src_obj, dict):
