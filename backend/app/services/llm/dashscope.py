@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 import time
+from collections.abc import Generator
 from typing import Any
 
 from loguru import logger
@@ -83,6 +84,63 @@ class DashScopeLLM:
         return self._chat_json(
             model or settings.DASHSCOPE_MODEL_SUMMARY, system, user, temperature
         )
+
+    # ---- plain-text (non-JSON) chat call ---------------------------------
+    def chat(
+        self,
+        *,
+        system: str,
+        user: str,
+        model: str | None = None,
+        temperature: float = 0.3,
+    ) -> str:
+        """Plain-text chat — no response_format constraint."""
+        last_err: Exception | None = None
+        for attempt in range(_MAX_RETRIES + 1):
+            try:
+                resp = self.client.chat.completions.create(
+                    model=model or settings.DASHSCOPE_MODEL_SUMMARY,
+                    messages=[
+                        {"role": "system", "content": system},
+                        {"role": "user", "content": user},
+                    ],
+                    temperature=temperature,
+                )
+                return resp.choices[0].message.content or ""
+            except Exception as exc:  # noqa: BLE001
+                last_err = exc
+                logger.warning(f"LLM call failed (attempt {attempt + 1}): {exc}")
+                if attempt < _MAX_RETRIES:
+                    time.sleep(_BACKOFF_SECONDS * (attempt + 1))
+        raise RuntimeError(f"LLM call failed after retries: {last_err}")
+
+    # ---- streaming chat --------------------------------------------------
+    def chat_stream(
+        self,
+        *,
+        system: str,
+        user: str,
+        model: str | None = None,
+        temperature: float = 0.3,
+    ) -> Generator[str, None, None]:
+        """流式 chat，逐 token yield content delta 字符串。
+
+        使用 OpenAI SDK stream=True，不强制 json_object 格式
+        （流式模式下部分模型对 response_format 支持有限）。
+        """
+        stream = self.client.chat.completions.create(
+            model=model or settings.DASHSCOPE_MODEL_SUMMARY,
+            messages=[
+                {"role": "system", "content": system},
+                {"role": "user", "content": user},
+            ],
+            temperature=temperature,
+            stream=True,
+        )
+        for chunk in stream:
+            delta = chunk.choices[0].delta
+            if delta.content:
+                yield delta.content
 
     # ---- tool-calling (function calling) ----------------------------------
     def chat_with_tools(
