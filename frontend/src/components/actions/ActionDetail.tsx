@@ -8,23 +8,6 @@ const PRIORITY_LABEL = {
   low:  { text: '低优先级', k: 'sage' },
 } as const
 
-const btnSecondary: React.CSSProperties = {
-  padding: '12px 14px',
-  background: 'var(--pearl)',
-  border: '1px solid var(--line)',
-  color: 'var(--ink-2)',
-  borderRadius: 10, fontSize: 13, fontWeight: 600,
-}
-
-const btnPrimary: React.CSSProperties = {
-  padding: '12px 14px',
-  background: 'linear-gradient(135deg, var(--gold-1), var(--gold-2))',
-  border: '1px solid var(--gold-2)',
-  color: 'var(--pearl)',
-  borderRadius: 10, fontSize: 13, fontWeight: 600,
-  boxShadow: '0 4px 10px rgba(184,145,80,.25), inset 0 1px 0 rgba(255,252,244,.4)',
-}
-
 interface ActionDetailProps {
   d: Department
 }
@@ -211,12 +194,6 @@ export default function ActionDetail({ d }: ActionDetailProps) {
         {d.refs.map((r, i) => (
           <RefRow key={i} r={r} />
         ))}
-      </div>
-
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginTop: 'auto' }}>
-        <button style={btnSecondary}>查看详情</button>
-        <button style={btnSecondary}>导出清单</button>
-        <button style={btnPrimary}>标记已跟进</button>
       </div>
     </div>
   )

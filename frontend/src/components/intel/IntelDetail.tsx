@@ -240,7 +240,7 @@ export default function IntelDetail({ e, onClose }: { e: IntelEvent; onClose: ()
 
       {/* ============ 信号属性：方向 / 烈度 / 置信度 / 评分 ============ */}
       <DetailSection icon="info" title="信号属性" hint="Stage 3 抽取 + Stage 4 评分">
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           <SignalCell label="方向" value={dirLabel} valueTone={dirTone} />
           <SignalCell label="烈度" value={`${e.intensity}/5`} bar={e.intensity} />
           <SignalCell label="置信度" value={`${confidencePct}%`} bar={Math.round((e.confidence || 0) * 5)} />
@@ -336,7 +336,7 @@ export default function IntelDetail({ e, onClose }: { e: IntelEvent; onClose: ()
       </DetailSection>
 
       <DetailSection icon="users" title="相关品牌 / 平台">
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           {e.brands.map((b, i) => <BrandTile key={i} name={b} />)}
         </div>
       </DetailSection>
@@ -348,20 +348,9 @@ export default function IntelDetail({ e, onClose }: { e: IntelEvent; onClose: ()
         padding: 14,
         background: 'linear-gradient(135deg, var(--ivory), var(--pearl-warm))',
         border: '1px solid var(--line)', borderRadius: 10,
-        display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12,
       }}>
-        <div style={{ minWidth: 0 }}>
-          <div style={{ fontSize: 13, color: 'var(--ink-1)', fontWeight: 600, marginBottom: 4 }}>{e.citation}</div>
-          <div style={{ fontSize: 11.5, color: 'var(--ink-3)', fontFamily: 'var(--font-mono)' }}>发布时间: {e.citationTime}</div>
-        </div>
-        <button style={{
-          padding: '8px 12px',
-          background: 'var(--pearl)', border: '1px solid var(--line-strong)', borderRadius: 8,
-          fontSize: 12, fontWeight: 600, color: 'var(--ink-2)',
-          display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0,
-        }}>
-          查看原文 <Icon name="external" size={11} />
-        </button>
+        <div style={{ fontSize: 13, color: 'var(--ink-1)', fontWeight: 600, marginBottom: 4 }}>{e.citation}</div>
+        <div style={{ fontSize: 11.5, color: 'var(--ink-3)', fontFamily: 'var(--font-mono)' }}>发布时间: {e.citationTime}</div>
       </div>
 
       <div style={{ marginTop: 14, padding: 12, background: 'var(--gold-wash)', borderRadius: 10, border: '1px dashed var(--line-strong)', display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 11.5, color: 'var(--ink-3)' }}>

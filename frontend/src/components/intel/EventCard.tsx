@@ -60,7 +60,7 @@ export default function EventCard({ e, active, onClick }: EventCardProps) {
         position: 'absolute', left: -1, top: 18, width: 4, height: 28, borderRadius: 4,
         background: active ? 'var(--gold-1)' : 'transparent',
       }} />
-      <div className="flex items-center gap-3" style={{ marginBottom: 8 }}>
+      <div className="flex flex-wrap items-center gap-3" style={{ marginBottom: 8 }}>
         <span className={`chip ${TAB_TONES[e.cat] ?? 'bone'}`}>{e.cat}</span>
         {primary && (
           <span className={`chip ${ENV_FACTOR_TONE[primary.factorId]}`}
