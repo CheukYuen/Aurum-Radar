@@ -84,6 +84,38 @@ class DashScopeLLM:
             model or settings.DASHSCOPE_MODEL_SUMMARY, system, user, temperature
         )
 
+    # ---- tool-calling (function calling) ----------------------------------
+    def chat_with_tools(
+        self,
+        *,
+        messages: list[dict[str, Any]],
+        tools: list[dict[str, Any]],
+        model: str | None = None,
+        temperature: float = 0.3,
+    ) -> dict[str, Any]:
+        """带 tools 的 chat，让 LLM 选择调用哪个 tool。
+
+        返回：
+        - tool_call: {"type": "tool_call", "skill_name": ..., "arguments": ...}
+        - 普通回复:  {"type": "text", "content": ...}
+        """
+        resp = self.client.chat.completions.create(
+            model=model or settings.DASHSCOPE_MODEL_LIGHT,
+            messages=messages,
+            tools=tools,
+            tool_choice="auto",
+            temperature=temperature,
+        )
+        message = resp.choices[0].message
+        if message.tool_calls:
+            tc = message.tool_calls[0]
+            return {
+                "type": "tool_call",
+                "skill_name": tc.function.name,
+                "arguments": json.loads(tc.function.arguments),
+            }
+        return {"type": "text", "content": message.content or ""}
+
     # ---- stage 3: event extraction (双坐标轴 + 底层影响因子) ---------------
     def extract_event(
         self,

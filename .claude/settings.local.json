@@ -7,7 +7,8 @@
       "WebFetch(domain:docs.openstack.org)",
       "Bash(pip3 show *)",
       "Bash(pip3 install *)",
-      "Bash(python3.11 *)"
+      "Bash(python3.11 *)",
+      "Bash(/Users/qinzhanqun/PycharmProjects/Aurum-Radar/.venv/bin/python *)"
     ]
   }
 }

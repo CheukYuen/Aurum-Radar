@@ -45,6 +45,29 @@ class SkillRegistry:
             raise KeyError(f"Skill not found: {name}")
         return plugin.run(input_data, **kwargs)
 
+    def list_tool_definitions(self) -> list[dict[str, Any]]:
+        """返回所有 skill 的 OpenAI tool 定义列表。"""
+        return [p.get_tool_definition() for p in self._skills.values()]
+
+    def route(self, user_message: str, **kwargs: Any) -> dict[str, Any]:
+        """用 LLM function calling 自动路由到正确的 skill。"""
+        from app.services.llm import get_llm
+
+        tools = self.list_tool_definitions()
+        llm = get_llm()
+        result = llm.chat_with_tools(
+            messages=[{"role": "user", "content": user_message}],
+            tools=tools,
+            **kwargs,
+        )
+        if result["type"] == "tool_call":
+            return {
+                "type": "skill_matched",
+                "skill": result["skill_name"],
+                "output": self.run_skill(result["skill_name"], result["arguments"]),
+            }
+        return {"type": "no_skill_matched", "content": result["content"]}
+
 
 _registry: SkillRegistry | None = None
 

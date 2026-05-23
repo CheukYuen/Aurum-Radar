@@ -56,6 +56,22 @@ class SkillPlugin(abc.ABC):
             self._examples_cache = self._load_dir("examples")
         return self._examples_cache
 
+    def get_tool_definition(self) -> dict[str, Any]:
+        """返回 OpenAI function calling 格式的 tool 定义。"""
+        from app.services.skills.schema_converter import convert_schema
+
+        refs = self.load_references()
+        input_schema = refs.get("input_schema.json", {})
+        parameters = convert_schema(input_schema)
+        return {
+            "type": "function",
+            "function": {
+                "name": self.name,
+                "description": self.description,
+                "parameters": parameters,
+            },
+        }
+
     # ---- 内部方法 ----
 
     def _read_skill_md_body(self) -> str:

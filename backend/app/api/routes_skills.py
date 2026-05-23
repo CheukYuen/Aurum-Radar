@@ -13,6 +13,11 @@ class SkillRunRequest(BaseModel):
     options: dict[str, Any] = {}
 
 
+class SkillRouteRequest(BaseModel):
+    message: str
+    options: dict[str, Any] = {}
+
+
 @router.get("/skills")
 def list_skills(request: Request):
     registry = request.app.state.skill_registry
@@ -29,5 +34,15 @@ def run_skill(skill_name: str, body: SkillRunRequest, request: Request):
         return {"skill": skill_name, "output": result}
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
+@router.post("/skills/route")
+def route_skill(body: SkillRouteRequest, request: Request):
+    """用 LLM function calling 自动路由到匹配的 skill。"""
+    registry = request.app.state.skill_registry
+    try:
+        return registry.route(body.message, **body.options)
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
