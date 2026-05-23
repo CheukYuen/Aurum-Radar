@@ -128,7 +128,7 @@ intelligence layer. Targets: **JP / KR / SG / TH / MY / VN / ID / PH / US**.
 python scripts/run_all.py                       # original 6 SG probes (default, unchanged)
 python scripts/run_all.py --global              # SG + 5 global probes
 python scripts/run_all.py --only-global         # only global probes
-python scripts/run_all.py --global --include reddit,trends,baidu   # add opt-in social/trend
+python scripts/run_all.py --global --include reddit,trends   # add opt-in social/trend
 ```
 
 Each global probe is also runnable on its own:
@@ -137,11 +137,9 @@ Each global probe is also runnable on its own:
 python scripts/probe_gdelt.py
 python scripts/probe_global_news.py
 python scripts/probe_federal_register.py
-python scripts/probe_ecommerce.py
 python scripts/probe_tavily.py
 python scripts/probe_reddit.py   # opt-in
 python scripts/probe_trends.py   # opt-in
-python scripts/probe_baidu_index.py   # opt-in, records JS/login access boundary
 ```
 
 ### Implemented (MVP)
@@ -151,7 +149,6 @@ python scripts/probe_baidu_index.py   # opt-in, records JS/login access boundary
 | `probe_gdelt` | GDELT 2.0 DOC API | JSON API | all |
 | `probe_global_news` | Google News RSS (markets × keywords) | RSS | all |
 | `probe_federal_register` | US Federal Register | JSON API | US |
-| `probe_ecommerce` | Shopify / Amazon / Shopee / Lazada announcements | RSS + HTML | all |
 | `probe_tavily` | Tavily Search (ported from `agent/`) | API + 24h file cache | all |
 
 ### Opt-in (`--include`)
@@ -160,7 +157,6 @@ python scripts/probe_baidu_index.py   # opt-in, records JS/login access boundary
 |---|---|---|
 | `probe_reddit` | `praw` + `REDDIT_CLIENT_ID/SECRET/USER_AGENT` | skipped |
 | `probe_trends` | `pytrends` | skipped |
-| `probe_baidu_index` | Baidu Index browser login / official access for real time series | failed placeholder |
 
 ### Registry-only
 
@@ -173,7 +169,7 @@ currently calls them.
 
 - `config/markets.yaml` — 9 markets with Google News `hl/gl/ceid` and `languages`.
 - `config/keywords.yaml` — `brands / products / market_topics / platforms / regulation_terms`.
-- `config/sources.yaml` — `gdelt / global_news / federal_register / ecommerce_announcements / tavily` blocks, plus `registry_only`.
+- `config/sources.yaml` — `gdelt / global_news / federal_register / tavily` blocks, plus `registry_only`.
 
 ### Output format (PRD §2 unified schema)
 

@@ -91,8 +91,8 @@ malls:
 # ============================================================
 # Global intelligence sources (PRD 爬虫2)
 # Consumed by probe_gdelt / probe_global_news / probe_federal_register /
-# probe_ecommerce / probe_tavily. Markets and keywords pulled from
-# markets.yaml + keywords.yaml at runtime.
+# probe_tavily. Markets and keywords pulled from markets.yaml + keywords.yaml
+# at runtime.
 # ============================================================
 
 gdelt:
@@ -148,45 +148,6 @@ federal_register:
   per_page: 20
   # 关键词来自 keywords.yaml:regulation_terms
   notes: 美国联邦公报；关键词来自 keywords.regulation_terms
-
-ecommerce_announcements:
-  - source_id: shopify_changelog
-    source_name: Shopify Changelog
-    source_type: ecommerce
-    access_type: rss
-    cost_type: free
-    enabled: true
-    url: https://shopify.dev/changelog
-    api_url: https://shopify.dev/changelog.atom
-    markets: [GLOBAL]
-    notes: Shopify 官方变更日志 Atom feed
-  - source_id: amazon_seller_central
-    source_name: Amazon Seller Central Announcements
-    source_type: ecommerce
-    access_type: html
-    cost_type: free
-    enabled: true
-    url: https://sellercentral.amazon.com/help/hub/announcements
-    markets: [US, GLOBAL]
-    notes: 公开公告页；需 Googlebot UA，否则 429
-  - source_id: shopee_open_platform
-    source_name: Shopee Open Platform Announcements
-    source_type: ecommerce
-    access_type: html
-    cost_type: free
-    enabled: true
-    url: https://open.shopee.com/news
-    markets: [SG, TH, MY, VN, ID, PH]
-    notes: 东南亚卖家公告
-  - source_id: lazada_open_platform
-    source_name: Lazada Open Platform
-    source_type: ecommerce
-    access_type: html
-    cost_type: free
-    enabled: true
-    url: https://open.lazada.com/apps/doc/doc?nodeId=10557&docId=108253
-    markets: [SG, TH, MY, VN, ID, PH]
-    notes: JS 渲染严重；可能 parse_failed，保留 raw HTML snapshot
 
 tavily:
   source_id: tavily
@@ -252,7 +213,7 @@ registry_only:
   trend:
     - {source_id: google_trends, source_name: Google Trends, source_type: trend, access_type: restricted, cost_type: restricted, markets: [GLOBAL], url: "https://trends.google.com/trends/", notes: "官方 Trends API 需申请"}
     - {source_id: pytrends, source_name: pytrends (unofficial), source_type: trend, access_type: api, cost_type: free, markets: [GLOBAL], url: "https://github.com/GeneralMills/pytrends", notes: "opt-in via probe_trends; 非官方易限流"}
-    - {source_id: baidu_index, source_name: Baidu Index / 百度指数, source_type: trend, access_type: restricted, cost_type: freemium, markets: [CN], url: "https://index.baidu.com/v2/index.html#/", notes: "opt-in via probe_baidu_index; 页面依赖 JS/登录态，当前仅登记并输出受限占位记录"}
+    - {source_id: baidu_index, source_name: Baidu Index / 百度指数, source_type: trend, access_type: restricted, cost_type: freemium, markets: [CN], url: "https://index.baidu.com/v2/index.html#/", notes: "页面依赖 JS/登录态，无 probe；生产化需官方授权或 licensed data provider"}
     - {source_id: serpapi_trends, source_name: SerpAPI Google Trends, source_type: trend, access_type: api, cost_type: paid, markets: [GLOBAL], url: "https://serpapi.com/google-trends-api"}
     - {source_id: dataforseo_trends, source_name: DataForSEO Trends API, source_type: trend, access_type: api, cost_type: paid, markets: [GLOBAL], url: "https://dataforseo.com/apis/google-trends-api"}
 

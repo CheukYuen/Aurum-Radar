@@ -7,7 +7,9 @@ should be ported in. Until then the pipeline can run on seed documents via
 """
 from __future__ import annotations
 
+import hashlib
 import json
+import urllib.parse
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -115,6 +117,18 @@ def collect_documents(
     return docs
 
 
+def _compute_content_hash(record: dict) -> str:
+    """Stable dedup key matching data_probe dedupe_key() — always a sha1 hex."""
+    url = (record.get("url") or "").strip()
+    if url:
+        parsed = urllib.parse.urlsplit(url)
+        key = urllib.parse.urlunsplit((parsed.scheme, parsed.netloc, parsed.path, "", ""))
+    else:
+        source = record.get("source_name") or record.get("entity", "")
+        key = f"{source}|{record.get('title', '')}|{record.get('published_at', '')}"
+    return hashlib.sha1(key.encode("utf-8")).hexdigest()
+
+
 def load_seed_documents(path: str | Path) -> list[RawDocumentIn]:
     """Load RawDocumentIn objects from a data_probe normalized-export JSON.
 
@@ -143,19 +157,65 @@ def load_seed_documents(path: str | Path) -> list[RawDocumentIn]:
                 url=r.get("url", ""),
                 published_at=_parse_dt(r.get("published_at")),
                 fetched_at=_parse_dt(r.get("fetched_at")) or datetime.now(timezone.utc),
-                # TODO: data_probe RSS records have no body — raw_content is None.
                 raw_content=None,
+                content_hash=_compute_content_hash(r),
             )
         )
     logger.info(f"Loaded {len(docs)} seed documents from {p}")
     return docs
 
 
+def load_jsonl_documents(path: str | Path) -> list[RawDocumentIn]:
+    """Load RawDocumentIn objects from a data_probe JSONL file (18-field PRD §2 schema).
+
+    Handles output from probe_gdelt, probe_global_news, probe_reddit,
+    probe_tavily, probe_trends, probe_federal_register.
+    """
+    p = Path(path)
+    if not p.exists():
+        logger.warning(f"JSONL file not found: {p}")
+        return []
+    docs: list[RawDocumentIn] = []
+    for raw_line in p.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if not line:
+            continue
+        try:
+            r = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        title = r.get("title") or ""
+        if not title or r.get("status") == "failed":
+            continue
+        market = r.get("market", "")
+        docs.append(
+            RawDocumentIn(
+                source_type=_normalize_source_type(r.get("source_type", "news")),
+                source_name=r.get("source_name", "unknown"),
+                market=market,
+                region=region_for(market),
+                title=title,
+                summary=r.get("summary") or None,
+                url=r.get("url", ""),
+                published_at=_parse_dt(r.get("published_at")),
+                fetched_at=_parse_dt(r.get("collected_at")) or datetime.now(timezone.utc),
+                language=r.get("language") or None,
+                raw_content=r.get("raw_text") or None,
+                content_hash=_compute_content_hash(r),
+            )
+        )
+    logger.info(f"Loaded {len(docs)} JSONL documents from {p.name}")
+    return docs
+
+
 def _normalize_source_type(value: str) -> SourceType:
-    """data_probe uses platform_policy / mall — map to canonical SourceType."""
+    """Map data_probe source_type strings to canonical SourceType enum."""
     mapping = {
         "platform_policy": SourceType.platform,
         "mall": SourceType.mall,
+        "trend": SourceType.report,
+        "ecommerce": SourceType.platform,
+        "social": SourceType.social,
     }
     if value in mapping:
         return mapping[value]

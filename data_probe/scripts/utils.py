@@ -192,70 +192,11 @@ def make_record(
     return record
 
 
-_BOILERPLATE_PHRASES = [
-    "Advertisement", "Subscribe", "Sign up", "Cookie", "Terms of Use",
-    "Privacy Policy", "WhatsApp", "Facebook", "Telegram", "Bookmark",
-    "Copyright©", "All rights reserved", "download the mobile app",
-    "upgrade to a supported browser", "breaking news",
-]
-
 _URLLIB_HEADERS = {
     "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/124 Safari/537.36",
     "Accept": "text/html,application/xhtml+xml",
     "Accept-Language": "en-US,en;q=0.9",
 }
-
-
-def resolve_article_url(title: str, source_domain: str) -> str | None:
-    """Use DuckDuckGo HTML search to find the real article URL from title + source domain.
-
-    Uses urllib (not requests) to avoid LibreSSL 2.8.3 incompatibility.
-    Returns the first matching URL, or None if not found.
-    """
-    query = f"site:{source_domain} {title[:80]}"
-    qs = urllib.parse.urlencode({"q": query})
-    ddg_url = f"https://html.duckduckgo.com/html/?{qs}"
-    req = urllib.request.Request(ddg_url, headers=_URLLIB_HEADERS)
-    try:
-        html = urllib.request.urlopen(req, timeout=TIMEOUT).read().decode("utf-8", errors="replace")
-    except Exception:
-        return None
-
-    soup = BeautifulSoup(html, "lxml")
-    for a in soup.select("a.result__a"):
-        href = a.get("href", "")
-        params = urllib.parse.parse_qs(urllib.parse.urlparse(href).query)
-        real = urllib.parse.unquote(params.get("uddg", [""])[0])
-        if real.startswith("http") and source_domain in real:
-            return real
-    return None
-
-
-def fetch_article_text(url: str, min_para_len: int = 60, max_paras: int = 30) -> str | None:
-    """Fetch a news article URL and return cleaned paragraph text.
-
-    Filters out navigation, ads, and boilerplate. Uses urllib to avoid LibreSSL issues.
-    Returns joined paragraph text, or None on fetch failure.
-    """
-    req = urllib.request.Request(url, headers=_URLLIB_HEADERS)
-    try:
-        html = urllib.request.urlopen(req, timeout=TIMEOUT).read().decode("utf-8", errors="replace")
-    except Exception:
-        return None
-
-    soup = BeautifulSoup(html, "lxml")
-    paras = []
-    for p in soup.find_all("p"):
-        txt = p.get_text(strip=True)
-        if len(txt) < min_para_len:
-            continue
-        if any(phrase in txt for phrase in _BOILERPLATE_PHRASES):
-            continue
-        paras.append(txt)
-        if len(paras) >= max_paras:
-            break
-
-    return "\n\n".join(paras) if paras else None
 
 
 def save_outputs(source_type: str, raw: list[dict], normalized: list[dict]) -> None:
