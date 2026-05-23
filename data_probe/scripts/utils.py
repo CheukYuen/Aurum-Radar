@@ -132,6 +132,13 @@ def fetch_json(url: str, params: dict | None = None,
     return None, last_err
 
 
+def strip_html(text: str) -> str:
+    """Strip HTML tags and decode entities. Used for Google News RSS summaries."""
+    if not text:
+        return ""
+    return BeautifulSoup(text, "html.parser").get_text(separator=" ", strip=True)
+
+
 def parse_page_title(html: str) -> str:
     soup = BeautifulSoup(html, "lxml")
     tag = soup.find("title")

@@ -11,3 +11,5 @@ openai==1.55.3
 apscheduler==3.10.4
 beautifulsoup4==4.12.3
 python-dotenv==1.0.1
+stevedore>=5.0
+jsonschema>=4.0

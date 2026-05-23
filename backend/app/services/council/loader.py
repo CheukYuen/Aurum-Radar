@@ -11,10 +11,10 @@ import json
 from functools import lru_cache
 from pathlib import Path
 
-_SKILL_DIR = Path(__file__).resolve().parent / "skills" / "jewelry_intelligence_council"
-_EXPERTS_DIR = _SKILL_DIR / "experts"
-_PROMPTS_DIR = _SKILL_DIR / "prompts"
-_KNOWLEDGE_DIR = _SKILL_DIR / "knowledge"
+_SKILL_DIR = Path(__file__).resolve().parent.parent.parent.parent / ".skills" / "jewelry-intelligence-council"
+_EXPERTS_DIR = _SKILL_DIR / "references" / "experts"
+_PROMPTS_DIR = _SKILL_DIR / "references" / "prompts"
+_KNOWLEDGE_DIR = _SKILL_DIR / "references" / "knowledge"
 
 
 def _read(path: Path) -> str:
