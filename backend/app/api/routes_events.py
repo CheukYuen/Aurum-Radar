@@ -4,6 +4,7 @@ from datetime import datetime
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel, Field
 from sqlalchemy import cast
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Session
@@ -169,6 +170,28 @@ def list_events(
         "total": total,
         "page": page,
         "size": size,
+    }
+
+
+class BatchQuery(BaseModel):
+    ids: list[int] = Field(..., min_length=1, max_length=100)
+
+
+@router.post("/events/batch")
+def batch_events(body: BatchQuery, db: Session = Depends(get_db)):
+    rows = (
+        db.query(IntelligenceEvent, RawDocument)
+        .outerjoin(RawDocument, IntelligenceEvent.raw_document_id == RawDocument.id)
+        .filter(IntelligenceEvent.id.in_(body.ids))
+        .order_by(IntelligenceEvent.created_at.desc(), IntelligenceEvent.id.desc())
+        .all()
+    )
+    found_ids = {event.id for event, _ in rows}
+    missing = [i for i in body.ids if i not in found_ids]
+    return {
+        "items": [_serialize_event(event, raw) for event, raw in rows],
+        "total": len(rows),
+        "missing": missing or None,
     }
 
 
