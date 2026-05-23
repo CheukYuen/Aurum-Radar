@@ -68,6 +68,9 @@ flowchart TD
     U --> RAW["原始证据<br/>output/raw/*.html<br/>output/raw/*.jsonl"]
     U --> FAIL["失败占位<br/>[failed] records<br/>parse_failed snapshots"]
 
+    N --> E["可选后处理<br/>probe_global_news_enrich.py<br/>GN 标题 → 真实 URL + 正文<br/>⚠ 须从系统终端运行"]
+    E --> N
+
     N --> S["snapshot_crawl.py"]
     RAW --> S
     FAIL --> S
