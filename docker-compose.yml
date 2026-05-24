@@ -1,0 +1,24 @@
+services:
+  backend:
+    build: ./backend
+    image: aurum-radar-backend:latest
+    container_name: aurum-backend
+    env_file:
+      - ./backend/.env.${ENV:-local}
+    environment:
+      SCHEDULER_ENABLED: "false"
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    image: aurum-radar-frontend:latest
+    container_name: aurum-frontend
+    environment:
+      API_PROXY_TARGET: http://backend:8000
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend
+    restart: unless-stopped

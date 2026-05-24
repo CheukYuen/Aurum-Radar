@@ -13,6 +13,7 @@
 # 环境变量（含密钥，绝不提交）
 .env
 .env.local
+.env.prod
 .env.*.local
 
 # Frontend dependencies & build output
@@ -38,3 +39,5 @@ data_probe/output/summary_*.json
 # Generated run artifacts
 backend/strategy_*_output.json
 backend/council*output.json
+
+node_modules/

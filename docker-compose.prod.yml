@@ -1,0 +1,19 @@
+# 生产环境覆盖文件 — 与 docker-compose.yml 一起使用
+#
+# 用法（在 ECS 上）：
+#   ENV=prod docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+#
+# 与 dev 的差异：
+#   - 前端从 5173 改到 80（浏览器直接访问 http://<公网IP>）
+#   - 后端 8000 不再对外暴露（仅 docker 内部网络可达，由前端 proxy 转发）
+#   - APP_DEBUG=false 已在 backend/.env.prod 里设置
+
+services:
+  backend:
+    # 移除公网端口暴露；如需 ssh tunnel 调试再临时打开
+    ports: !override []
+
+  frontend:
+    # 替换 dev 的 5173:5173 → 80:5173
+    ports: !override
+      - "80:5173"

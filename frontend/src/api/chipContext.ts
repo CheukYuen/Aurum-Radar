@@ -35,9 +35,10 @@ export async function buildChipContext(id: ChipId, country: string): Promise<str
     case 'market': {
       const detail = await fetchCountryDetail(country)
       if (!detail) return `【${getMarketDisplayName(country)} 市场判断】暂无数据`
-      const opps = detail.impacts.filter(i => i.kind === 'opportunity').map(i => i.text)
-      const risks = detail.impacts.filter(i => i.kind === 'risk').map(i => i.text)
-      const watches = detail.impacts.filter(i => i.kind === 'watch').map(i => i.text)
+      const impacts = detail.impacts ?? []
+      const opps = impacts.filter(i => i.kind === 'opportunity').map(i => i.text)
+      const risks = impacts.filter(i => i.kind === 'risk').map(i => i.text)
+      const watches = impacts.filter(i => i.kind === 'watch').map(i => i.text)
       return [
         `【${detail.name} 市场判断】状态: ${detail.status || '—'} | opp=${detail.score} | 竞争=${detail.competitionLabel}`,
         opps.length ? `机会: ${opps.join('; ')}` : '',
