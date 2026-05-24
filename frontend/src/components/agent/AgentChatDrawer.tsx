@@ -3,8 +3,6 @@ import Icon from '../ui/Icon'
 import { streamAgent, type AgentType } from '../../api/agentStream'
 import { CHIP_DEFS, buildChipContext, type ChipId } from '../../api/chipContext'
 
-const CONTEXT_CHIP_IDS: ChipId[] = ['brief', 'market', 'priority', 'actions']
-
 const SUGGESTED_QUESTIONS = [
   '为什么今天的市场被判断为机会增强？',
   '金价高位对哪些产品线影响最大？',
@@ -103,6 +101,19 @@ export default function AgentChatDrawer({ open, onClose, initialQuestion, curren
     const text = chipCache.get('priority') ?? ''
     return (text.match(/#(\d+)/g) ?? []).map(m => m.slice(1)).slice(0, 5)
   }, [chipCache])
+
+  // 关联分析建议问题（需至少 2 个事件 ID）
+  const correlationQuestions = useMemo(() => {
+    const ids = correlationEventIds
+    if (ids.length < 2) return []
+    const qs: string[] = []
+    qs.push(`分析事件 #${ids.slice(0, 3).join('、#')} 的关联关系`)
+    qs.push(`事件 #${ids[0]} 和 #${ids[1]} 之间是否存在因果链？`)
+    if (ids.length >= 3) qs.push(`梳理事件 #${ids[0]}、#${ids[1]}、#${ids[2]} 的时间脉络与传导路径`)
+    if (ids.length >= 4) qs.push(`事件 #${ids[0]} 和 #${ids[3]} 背后是否有共同驱动因素？`)
+    if (ids.length >= 2) qs.push(`事件 #${ids[0]} 和 #${ids[1]} 叠加后对核心市场冲击如何？`)
+    return qs
+  }, [correlationEventIds])
   const sessionIdRef = useRef<string | null>(null)
   const streamingRef = useRef(false)
   const didSendRef = useRef(false)
@@ -139,20 +150,9 @@ export default function AgentChatDrawer({ open, onClose, initialQuestion, curren
   const handleChipClick = useCallback(async (id: ChipId) => {
     const def = CHIP_DEFS.find(d => d.id === id)!
     const isSelecting = !selected.has(id)
-    const newSelected = new Set(selected)
-
-    if (id === 'correlation') {
-      // 关联分析是独立 toggle
-      isSelecting ? newSelected.add(id) : newSelected.delete(id)
-    } else {
-      // 追问 chips 单选：选中一个自动取消其他
-      if (isSelecting) {
-        CONTEXT_CHIP_IDS.forEach(cid => newSelected.delete(cid))
-        newSelected.add(id)
-      } else {
-        newSelected.delete(id)
-      }
-    }
+    // 所有 chip 统一单选：选中任一个自动取消其它；点击已选中的则取消
+    const newSelected = new Set<ChipId>()
+    if (isSelecting) newSelected.add(id)
     setSelected(newSelected)
     setInlineError('')
 
@@ -364,6 +364,9 @@ export default function AgentChatDrawer({ open, onClose, initialQuestion, curren
                       }} />
                     )}
                     {hasError && !isLoading && <span>✕</span>}
+                    {isSelected && !isLoading && !hasError && (
+                      <span style={{ color: 'var(--gold-2)', fontSize: 10, lineHeight: 1 }}>✕</span>
+                    )}
                     {def.label(currentCountry)}
                   </button>
                 )
@@ -394,6 +397,9 @@ export default function AgentChatDrawer({ open, onClose, initialQuestion, curren
                     transition: 'all .15s ease',
                   }}
                 >
+                  {isSelected && (
+                    <span style={{ color: 'var(--gold-2)', fontSize: 10, lineHeight: 1 }}>✕</span>
+                  )}
                   {def.label(currentCountry)}
                 </button>
               )
@@ -410,10 +416,9 @@ export default function AgentChatDrawer({ open, onClose, initialQuestion, curren
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {selected.has('correlation') ? (
-                  correlationEventIds.length >= 2 ? (
-                    <>
-                      <button
-                        onClick={() => doSend(`分析事件 #${correlationEventIds.slice(0, 3).join('、#')} 的关联关系`)}
+                  correlationQuestions.length > 0 ? (
+                    correlationQuestions.map(q => (
+                      <button key={q} onClick={() => doSend(q)}
                         style={{
                           textAlign: 'left', padding: '10px 14px',
                           background: 'var(--pearl)', border: '1px solid var(--line-soft)', borderRadius: 10,
@@ -422,25 +427,8 @@ export default function AgentChatDrawer({ open, onClose, initialQuestion, curren
                         }}
                         onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--line-strong)'; e.currentTarget.style.background = 'var(--gold-wash)' }}
                         onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--line-soft)'; e.currentTarget.style.background = 'var(--pearl)' }}
-                      >
-                        分析事件 #{correlationEventIds.slice(0, 3).join('、#')} 的关联关系
-                      </button>
-                      {correlationEventIds.length >= 4 && (
-                        <button
-                          onClick={() => doSend(`事件 #${correlationEventIds[0]} 和 #${correlationEventIds[3]} 背后是否有共同驱动因素？`)}
-                          style={{
-                            textAlign: 'left', padding: '10px 14px',
-                            background: 'var(--pearl)', border: '1px solid var(--line-soft)', borderRadius: 10,
-                            fontSize: 13, color: 'var(--ink-2)', lineHeight: 1.5,
-                            cursor: 'pointer', transition: 'all .15s ease',
-                          }}
-                          onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--line-strong)'; e.currentTarget.style.background = 'var(--gold-wash)' }}
-                          onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--line-soft)'; e.currentTarget.style.background = 'var(--pearl)' }}
-                        >
-                          事件 #{correlationEventIds[0]} 和 #{correlationEventIds[3]} 背后是否有共同驱动因素？
-                        </button>
-                      )}
-                    </>
+                      >{q}</button>
+                    ))
                   ) : (
                     <div style={{ fontSize: 12, color: 'var(--ink-3)', padding: '8px 0' }}>
                       正在加载高优先级事件…
