@@ -6,23 +6,31 @@ import type { CountryNode, Filters, StatusKind } from '../../api/types'
 
 // ── Agent status bar (top thin strip) ───────────────────────────
 
+function formatNow() {
+  return new Date().toLocaleString('zh-CN', { hour12: false })
+}
+
 function AgentBar({ onOpenBriefing }: { onOpenBriefing: () => void }) {
   const [status, setStatus] = useState('连接中')
-  const [lastRun, setLastRun] = useState('—')
+  const [now, setNow] = useState(formatNow)
 
   useEffect(() => {
     fetchJobsStatus().then(data => {
       setStatus(data.status === 'success' ? '已完成' : data.status === 'running' ? '运行中' : data.status)
-      setLastRun(data.lastRun ? new Date(data.lastRun).toLocaleString('zh-CN', { hour12: false }) : '—')
     }).catch(error => {
       console.error(error)
       setStatus('待连接')
     })
   }, [])
 
+  useEffect(() => {
+    const id = setInterval(() => setNow(formatNow()), 60_000)
+    return () => clearInterval(id)
+  }, [])
+
   const items = [
     { label: '流水线状态', value: status, dot: status === '待连接' ? 'bone' : 'sage' },
-    { label: '最近运行', value: lastRun, dot: 'bone' },
+    { label: '当前时间', value: now, dot: 'bone' },
     { label: '数据源', value: '公开信息', dot: 'bone' },
   ]
   return (

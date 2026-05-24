@@ -311,24 +311,6 @@ export default function IntelDetail({ e, onClose }: { e: IntelEvent; onClose: ()
         <ImpactBlock items={e.impact} />
       </DetailSection>
 
-      {/* 歧义标记 (如果有) */}
-      {e.ambiguityFlags.length > 0 && (
-        <div style={{
-          marginBottom: 16, padding: '10px 12px',
-          background: 'rgba(180, 90, 70, .06)',
-          border: '1px dashed rgba(180, 90, 70, .35)',
-          borderRadius: 10,
-          fontSize: 11.5, color: 'var(--ink-2)',
-          display: 'flex', alignItems: 'flex-start', gap: 8,
-        }}>
-          <Icon name="alert" size={13} style={{ color: 'var(--clay-deep)', marginTop: 1 }} />
-          <div>
-            <span style={{ fontWeight: 700, color: 'var(--clay-deep)' }}>抽取阶段标记歧义：</span>
-            {e.ambiguityFlags.join(' · ')}
-          </div>
-        </div>
-      )}
-
       <DetailSection icon="globe" title="关联市场">
         <div className="flex flex-wrap gap-2">
           {e.markets.map((m, i) => <span key={i} className="chip sage">{m}</span>)}
