@@ -1,7 +1,9 @@
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import Icon from '../ui/Icon'
 import { streamAgent, type AgentType } from '../../api/agentStream'
 import { CHIP_DEFS, buildChipContext, type ChipId } from '../../api/chipContext'
+
+const CONTEXT_CHIP_IDS: ChipId[] = ['brief', 'market', 'priority', 'actions']
 
 const SUGGESTED_QUESTIONS = [
   '为什么今天的市场被判断为机会增强？',
@@ -95,6 +97,12 @@ export default function AgentChatDrawer({ open, onClose, initialQuestion, curren
   const [chipError, setChipError] = useState<Set<ChipId>>(new Set())
   const [inlineError, setInlineError] = useState('')
   const scrollRef = useRef<HTMLDivElement>(null)
+
+  // 从 priority 缓存里提取事件 ID，用于关联分析建议问题
+  const correlationEventIds = useMemo(() => {
+    const text = chipCache.get('priority') ?? ''
+    return (text.match(/#(\d+)/g) ?? []).map(m => m.slice(1)).slice(0, 5)
+  }, [chipCache])
   const sessionIdRef = useRef<string | null>(null)
   const streamingRef = useRef(false)
   const didSendRef = useRef(false)
@@ -131,21 +139,24 @@ export default function AgentChatDrawer({ open, onClose, initialQuestion, curren
   const handleChipClick = useCallback(async (id: ChipId) => {
     const def = CHIP_DEFS.find(d => d.id === id)!
     const isSelecting = !selected.has(id)
-
-    // 联动：选 correlation → 自动选 priority
     const newSelected = new Set(selected)
-    if (isSelecting) {
-      newSelected.add(id)
-      if (id === 'correlation' && !newSelected.has('priority')) {
-        newSelected.add('priority')
-      }
+
+    if (id === 'correlation') {
+      // 关联分析是独立 toggle
+      isSelecting ? newSelected.add(id) : newSelected.delete(id)
     } else {
-      newSelected.delete(id)
+      // 追问 chips 单选：选中一个自动取消其他
+      if (isSelecting) {
+        CONTEXT_CHIP_IDS.forEach(cid => newSelected.delete(cid))
+        newSelected.add(id)
+      } else {
+        newSelected.delete(id)
+      }
     }
     setSelected(newSelected)
     setInlineError('')
 
-    // 需要拉数据且未缓存
+    // 拉取上下文数据（未缓存时）
     if (isSelecting && def.needsFetch && !chipCache.has(id)) {
       setChipLoading(prev => new Set([...prev, id]))
       setChipError(prev => { const s = new Set(prev); s.delete(id); return s })
@@ -160,17 +171,12 @@ export default function AgentChatDrawer({ open, onClose, initialQuestion, curren
       }
     }
 
-    // 若 priority 因 correlation 联动需要拉
+    // 选中关联分析时，静默预取高优先级事件用于生成建议问题 ID
     if (isSelecting && id === 'correlation' && !chipCache.has('priority')) {
-      setChipLoading(prev => new Set([...prev, 'priority']))
       try {
         const text = await buildChipContext('priority', currentCountry)
         setChipCache(prev => new Map([...prev, ['priority', text]]))
-      } catch {
-        setChipError(prev => new Set([...prev, 'priority']))
-      } finally {
-        setChipLoading(prev => { const s = new Set(prev); s.delete('priority'); return s })
-      }
+      } catch { /* silent */ }
     }
   }, [selected, chipCache, currentCountry])
 
@@ -185,17 +191,22 @@ export default function AgentChatDrawer({ open, onClose, initialQuestion, curren
       .map(id => chipCache.get(id))
       .filter(Boolean) as string[]
 
+    // 关联分析模式：自动注入高优先级事件上下文（即使用户未在追问行选中它）
+    const agentType: AgentType = selected.has('correlation') ? 'correlation_analysis' : 'general_chat'
+    if (agentType === 'correlation_analysis' && !selected.has('priority')) {
+      const priorityCtx = chipCache.get('priority')
+      if (priorityCtx) ctxBlocks.unshift(priorityCtx)
+    }
+
     const userContent = ctxBlocks.length
       ? ctxBlocks.join('\n\n') + '\n\n## 提问\n' + q
       : q
 
-    const agentType: AgentType = selected.has('correlation') ? 'correlation_analysis' : 'general_chat'
-
-    // 关联分析校验 ≥3 个事件 ID
+    // 关联分析校验：消息里需包含至少 2 个事件 ID（#N 格式）
     if (agentType === 'correlation_analysis') {
       const ids = userContent.match(/#\d{1,6}/g) ?? []
-      if (ids.length < 3) {
-        setInlineError('关联分析需至少 3 条事件，请先选中「高优先级事件」chip')
+      if (ids.length < 2) {
+        setInlineError('请在问题中指定至少 2 个事件 ID（如 #32、#50）')
         return
       }
     }
@@ -316,42 +327,77 @@ export default function AgentChatDrawer({ open, onClose, initialQuestion, curren
             }}>×</button>
           </div>
 
-          {/* Context chips */}
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 12 }}>
-            {CHIP_DEFS.map(def => {
-              const isSelected = selected.has(def.id)
-              const isLoading = chipLoading.has(def.id)
-              const hasError = chipError.has(def.id)
+          {/* Context chips — 追问（单选） */}
+          <div style={{ marginTop: 12 }}>
+            <div style={{ fontSize: 9, fontWeight: 700, color: 'var(--ink-4)', letterSpacing: '.1em', textTransform: 'uppercase', marginBottom: 5 }}>
+              追问上下文
+            </div>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              {CHIP_DEFS.filter(d => d.id !== 'correlation').map(def => {
+                const isSelected = selected.has(def.id)
+                const isLoading = chipLoading.has(def.id)
+                const hasError = chipError.has(def.id)
+                return (
+                  <button
+                    key={def.id}
+                    onClick={() => handleChipClick(def.id)}
+                    title={hasError ? '加载失败，点击重试' : undefined}
+                    style={{
+                      padding: '3px 10px', borderRadius: 20,
+                      background: isSelected ? 'var(--gold-tint)' : 'var(--gold-wash)',
+                      border: `1px solid ${isSelected ? 'var(--gold-2)' : hasError ? '#c0392b' : 'var(--line)'}`,
+                      fontSize: 11,
+                      color: isSelected ? 'var(--ink-1)' : hasError ? '#c0392b' : 'var(--ink-2)',
+                      fontWeight: isSelected ? 600 : 500,
+                      cursor: 'pointer',
+                      display: 'flex', alignItems: 'center', gap: 4,
+                      transition: 'all .15s ease',
+                    }}
+                  >
+                    {isLoading && (
+                      <span style={{
+                        width: 8, height: 8, borderRadius: 4,
+                        border: '1.5px solid var(--gold-2)',
+                        borderTopColor: 'transparent',
+                        display: 'inline-block',
+                        animation: 'spin 0.7s linear infinite',
+                      }} />
+                    )}
+                    {hasError && !isLoading && <span>✕</span>}
+                    {def.label(currentCountry)}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* Correlation chip — 情报关联分析（独立行） */}
+          <div style={{ marginTop: 8 }}>
+            <div style={{ fontSize: 9, fontWeight: 700, color: 'var(--ink-4)', letterSpacing: '.1em', textTransform: 'uppercase', marginBottom: 5 }}>
+              情报关联分析
+            </div>
+            {(() => {
+              const def = CHIP_DEFS.find(d => d.id === 'correlation')!
+              const isSelected = selected.has('correlation')
               return (
                 <button
-                  key={def.id}
-                  onClick={() => handleChipClick(def.id)}
-                  title={hasError ? '加载失败，点击重试' : undefined}
+                  onClick={() => handleChipClick('correlation')}
                   style={{
-                    padding: '3px 10px', borderRadius: 20,
+                    padding: '3px 12px', borderRadius: 20,
                     background: isSelected ? 'var(--gold-tint)' : 'var(--gold-wash)',
-                    border: `1px solid ${isSelected ? 'var(--gold-2)' : hasError ? '#c0392b' : 'var(--line)'}`,
-                    fontSize: 11, color: isSelected ? 'var(--ink-1)' : hasError ? '#c0392b' : 'var(--ink-2)',
+                    border: isSelected ? '2px solid var(--gold-3)' : '1px solid var(--line)',
+                    fontSize: 11,
+                    color: isSelected ? 'var(--ink-1)' : 'var(--ink-2)',
                     fontWeight: isSelected ? 600 : 500,
                     cursor: 'pointer',
                     display: 'flex', alignItems: 'center', gap: 4,
                     transition: 'all .15s ease',
                   }}
                 >
-                  {isLoading && (
-                    <span style={{
-                      width: 8, height: 8, borderRadius: 4,
-                      border: '1.5px solid var(--gold-2)',
-                      borderTopColor: 'transparent',
-                      display: 'inline-block',
-                      animation: 'spin 0.7s linear infinite',
-                    }} />
-                  )}
-                  {hasError && !isLoading && <span>✕</span>}
                   {def.label(currentCountry)}
                 </button>
               )
-            })}
+            })()}
           </div>
         </div>
 
@@ -363,18 +409,57 @@ export default function AgentChatDrawer({ open, onClose, initialQuestion, curren
                 建议问题
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {SUGGESTED_QUESTIONS.map(q => (
-                  <button key={q} onClick={() => doSend(q)}
-                    style={{
-                      textAlign: 'left', padding: '10px 14px',
-                      background: 'var(--pearl)', border: '1px solid var(--line-soft)', borderRadius: 10,
-                      fontSize: 13, color: 'var(--ink-2)', lineHeight: 1.5,
-                      cursor: 'pointer', transition: 'all .15s ease',
-                    }}
-                    onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--line-strong)'; e.currentTarget.style.background = 'var(--gold-wash)' }}
-                    onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--line-soft)'; e.currentTarget.style.background = 'var(--pearl)' }}
-                  >{q}</button>
-                ))}
+                {selected.has('correlation') ? (
+                  correlationEventIds.length >= 2 ? (
+                    <>
+                      <button
+                        onClick={() => doSend(`分析事件 #${correlationEventIds.slice(0, 3).join('、#')} 的关联关系`)}
+                        style={{
+                          textAlign: 'left', padding: '10px 14px',
+                          background: 'var(--pearl)', border: '1px solid var(--line-soft)', borderRadius: 10,
+                          fontSize: 13, color: 'var(--ink-2)', lineHeight: 1.5,
+                          cursor: 'pointer', transition: 'all .15s ease',
+                        }}
+                        onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--line-strong)'; e.currentTarget.style.background = 'var(--gold-wash)' }}
+                        onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--line-soft)'; e.currentTarget.style.background = 'var(--pearl)' }}
+                      >
+                        分析事件 #{correlationEventIds.slice(0, 3).join('、#')} 的关联关系
+                      </button>
+                      {correlationEventIds.length >= 4 && (
+                        <button
+                          onClick={() => doSend(`事件 #${correlationEventIds[0]} 和 #${correlationEventIds[3]} 背后是否有共同驱动因素？`)}
+                          style={{
+                            textAlign: 'left', padding: '10px 14px',
+                            background: 'var(--pearl)', border: '1px solid var(--line-soft)', borderRadius: 10,
+                            fontSize: 13, color: 'var(--ink-2)', lineHeight: 1.5,
+                            cursor: 'pointer', transition: 'all .15s ease',
+                          }}
+                          onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--line-strong)'; e.currentTarget.style.background = 'var(--gold-wash)' }}
+                          onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--line-soft)'; e.currentTarget.style.background = 'var(--pearl)' }}
+                        >
+                          事件 #{correlationEventIds[0]} 和 #{correlationEventIds[3]} 背后是否有共同驱动因素？
+                        </button>
+                      )}
+                    </>
+                  ) : (
+                    <div style={{ fontSize: 12, color: 'var(--ink-3)', padding: '8px 0' }}>
+                      正在加载高优先级事件…
+                    </div>
+                  )
+                ) : (
+                  SUGGESTED_QUESTIONS.map(q => (
+                    <button key={q} onClick={() => doSend(q)}
+                      style={{
+                        textAlign: 'left', padding: '10px 14px',
+                        background: 'var(--pearl)', border: '1px solid var(--line-soft)', borderRadius: 10,
+                        fontSize: 13, color: 'var(--ink-2)', lineHeight: 1.5,
+                        cursor: 'pointer', transition: 'all .15s ease',
+                      }}
+                      onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--line-strong)'; e.currentTarget.style.background = 'var(--gold-wash)' }}
+                      onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--line-soft)'; e.currentTarget.style.background = 'var(--pearl)' }}
+                    >{q}</button>
+                  ))
+                )}
               </div>
             </div>
           )}
