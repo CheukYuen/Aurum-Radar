@@ -474,13 +474,13 @@ function mapCountry(raw: JsonRecord): CountryNode {
   const market = normalizeMarket(str(raw.market))
   const opportunity = num(raw.opportunity_score)
   const risk = num(raw.risk_score)
-  const layout = MARKET_LAYOUT[market] ?? { name: market, x: 1120, y: 360, size: 13 }
+  const layout = MARKET_LAYOUT[market] ?? { name: market, lon: 0, lat: 0, size: 13 }
   return {
     id: market,
     name: layout.name,
     sub: market,
-    x: layout.x,
-    y: layout.y,
+    lon: layout.lon,
+    lat: layout.lat,
     status: marketStatus(opportunity, risk).status,
     size: layout.size,
     headline: clean(raw.headline),

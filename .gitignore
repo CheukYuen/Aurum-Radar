@@ -39,5 +39,5 @@ data_probe/output/summary_*.json
 # Generated run artifacts
 backend/strategy_*_output.json
 backend/council*output.json
-
 node_modules/
+.claude/settings.local.json

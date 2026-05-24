@@ -13,7 +13,7 @@ export const CHIP_DEFS: ChipDef[] = [
   { id: 'market',      label: (c) => `${getMarketDisplayName(c)} 市场判断`, needsFetch: true },
   { id: 'priority',    label: () => '高优先级事件',                        needsFetch: true },
   { id: 'actions',     label: () => '部门行动建议',                        needsFetch: true },
-  { id: 'correlation', label: () => '关联分析',                            needsFetch: false },
+  { id: 'correlation', label: () => '情报关联分析',                         needsFetch: false },
 ]
 
 /** 拉取 chip 对应的上下文数据并格式化为可直接注入 prompt 的纯文本块 */

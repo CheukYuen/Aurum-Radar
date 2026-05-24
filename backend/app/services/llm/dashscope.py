@@ -122,11 +122,12 @@ class DashScopeLLM:
         user: str,
         model: str | None = None,
         temperature: float = 0.3,
+        enable_thinking: bool = False,
     ) -> Generator[str, None, None]:
         """流式 chat，逐 token yield content delta 字符串。
 
-        使用 OpenAI SDK stream=True，不强制 json_object 格式
-        （流式模式下部分模型对 response_format 支持有限）。
+        enable_thinking=False 禁用 Qwen3 系列的推理链，显著降低首 token 延迟。
+        非 Qwen3 模型忽略该参数。
         """
         stream = self.client.chat.completions.create(
             model=model or settings.DASHSCOPE_MODEL_SUMMARY,
@@ -136,6 +137,7 @@ class DashScopeLLM:
             ],
             temperature=temperature,
             stream=True,
+            extra_body={"enable_thinking": enable_thinking},
         )
         for chunk in stream:
             delta = chunk.choices[0].delta

@@ -13,8 +13,8 @@ export interface CountryNode {
   id: string
   name: string
   sub: string
-  x: number
-  y: number
+  lon: number
+  lat: number
   status: StatusKind
   size: number
   headline?: string
