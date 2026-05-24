@@ -104,8 +104,10 @@ async def stream_agent(body: StreamRequest, request: Request):
         queue: asyncio.Queue[str | None] = asyncio.Queue()
 
         def _producer():
+            from app.database.session import SessionLocal
+            db = SessionLocal()
             try:
-                for sse_line in agent.stream(query, None):
+                for sse_line in agent.stream(query, db):
                     # 给每个 chunk 注入 session_id
                     if sse_line.startswith("data: ") and sse_line != "data: [DONE]\n\n":
                         chunk_data = json.loads(sse_line[6:].strip())
@@ -124,6 +126,7 @@ async def stream_agent(body: StreamRequest, request: Request):
                 queue.put_nowait(error_chunk)
                 queue.put_nowait("data: [DONE]\n\n")
             finally:
+                db.close()
                 queue.put_nowait(None)
 
         loop = asyncio.get_event_loop()
