@@ -90,6 +90,7 @@ export default function AgentChatDrawer({ open, onClose, initialQuestion, curren
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [input, setInput] = useState('')
   const [selected, setSelected] = useState<Set<ChipId>>(new Set())
+  const [showSuggestions, setShowSuggestions] = useState(false)
   const [chipCache, setChipCache] = useState<Map<ChipId, string>>(new Map())
   const [chipLoading, setChipLoading] = useState<Set<ChipId>>(new Set())
   const [chipError, setChipError] = useState<Set<ChipId>>(new Set())
@@ -114,6 +115,42 @@ export default function AgentChatDrawer({ open, onClose, initialQuestion, curren
     if (ids.length >= 2) qs.push(`事件 #${ids[0]} 和 #${ids[1]} 叠加后对核心市场冲击如何？`)
     return qs
   }, [correlationEventIds])
+
+  // 当前选中 chip 对应的建议问题列表
+  const chipQuestions = useMemo<string[]>(() => {
+    if (selected.size === 0) return []
+    const id = [...selected][0]
+    switch (id) {
+      case 'correlation':
+        return correlationQuestions
+      case 'brief':
+        return [
+          '简报里最关键的 3 个判断是什么？',
+          '今日整体置信度如何？哪些判断需要复核？',
+          '与昨日相比有哪些新的变化？',
+        ]
+      case 'market':
+        return [
+          `为什么 ${currentCountry} 今日被判断为这个方向？`,
+          `${currentCountry} 市场最大的不确定性来自哪里？`,
+          `哪些事件直接驱动了对 ${currentCountry} 的判断？`,
+        ]
+      case 'priority':
+        return [
+          '这些 P0/P1 事件的共同驱动因素是什么？',
+          '哪些事件可能在 24 小时内升级？',
+          '列出每个 P0 事件的核心冲击路径',
+        ]
+      case 'actions':
+        return [
+          '哪些行动最紧急？需要今日完成？',
+          '各部门行动之间有冲突或依赖吗？',
+          '哪些行动对应了哪些核心情报？',
+        ]
+      default:
+        return []
+    }
+  }, [selected, correlationQuestions, currentCountry])
   const sessionIdRef = useRef<string | null>(null)
   const streamingRef = useRef(false)
   const didSendRef = useRef(false)
@@ -123,6 +160,7 @@ export default function AgentChatDrawer({ open, onClose, initialQuestion, curren
       setMessages([])
       setInput('')
       setSelected(new Set())
+      setShowSuggestions(false)
       setChipCache(new Map())
       setChipLoading(new Set())
       setChipError(new Set())
@@ -145,7 +183,7 @@ export default function AgentChatDrawer({ open, onClose, initialQuestion, curren
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight
     }
-  }, [messages])
+  }, [messages, selected, chipQuestions])
 
   const handleChipClick = useCallback(async (id: ChipId) => {
     const def = CHIP_DEFS.find(d => d.id === id)!
@@ -154,6 +192,7 @@ export default function AgentChatDrawer({ open, onClose, initialQuestion, curren
     const newSelected = new Set<ChipId>()
     if (isSelecting) newSelected.add(id)
     setSelected(newSelected)
+    setShowSuggestions(isSelecting)
     setInlineError('')
 
     // 拉取上下文数据（未缓存时）
@@ -184,6 +223,7 @@ export default function AgentChatDrawer({ open, onClose, initialQuestion, curren
     const q = text.trim()
     if (!q || streamingRef.current) return
     setInlineError('')
+    setShowSuggestions(false)
 
     // 组装 chip 上下文块（发给后端但UI只显示用户原始文字）
     const ctxBlocks = [...selected]
@@ -409,49 +449,6 @@ export default function AgentChatDrawer({ open, onClose, initialQuestion, curren
 
         {/* Conversation */}
         <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: 14 }}>
-          {messages.length === 0 && (
-            <div>
-              <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--ink-4)', letterSpacing: '.12em', textTransform: 'uppercase', marginBottom: 10 }}>
-                建议问题
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {selected.has('correlation') ? (
-                  correlationQuestions.length > 0 ? (
-                    correlationQuestions.map(q => (
-                      <button key={q} onClick={() => doSend(q)}
-                        style={{
-                          textAlign: 'left', padding: '10px 14px',
-                          background: 'var(--pearl)', border: '1px solid var(--line-soft)', borderRadius: 10,
-                          fontSize: 13, color: 'var(--ink-2)', lineHeight: 1.5,
-                          cursor: 'pointer', transition: 'all .15s ease',
-                        }}
-                        onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--line-strong)'; e.currentTarget.style.background = 'var(--gold-wash)' }}
-                        onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--line-soft)'; e.currentTarget.style.background = 'var(--pearl)' }}
-                      >{q}</button>
-                    ))
-                  ) : (
-                    <div style={{ fontSize: 12, color: 'var(--ink-3)', padding: '8px 0' }}>
-                      正在加载高优先级事件…
-                    </div>
-                  )
-                ) : (
-                  SUGGESTED_QUESTIONS.map(q => (
-                    <button key={q} onClick={() => doSend(q)}
-                      style={{
-                        textAlign: 'left', padding: '10px 14px',
-                        background: 'var(--pearl)', border: '1px solid var(--line-soft)', borderRadius: 10,
-                        fontSize: 13, color: 'var(--ink-2)', lineHeight: 1.5,
-                        cursor: 'pointer', transition: 'all .15s ease',
-                      }}
-                      onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--line-strong)'; e.currentTarget.style.background = 'var(--gold-wash)' }}
-                      onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--line-soft)'; e.currentTarget.style.background = 'var(--pearl)' }}
-                    >{q}</button>
-                  ))
-                )}
-              </div>
-            </div>
-          )}
-
           {messages.map(msg => (
             msg.role === 'user' ? (
               <div key={msg.id} style={{ display: 'flex', justifyContent: 'flex-end' }}>
@@ -471,6 +468,44 @@ export default function AgentChatDrawer({ open, onClose, initialQuestion, curren
               <AgentBubble key={msg.id} msg={msg} />
             )
           ))}
+
+          {(() => {
+            const hasChip = selected.size > 0
+            const isEmpty = messages.length === 0
+            const visible = (hasChip && showSuggestions) || (isEmpty && !hasChip)
+            if (!visible) return null
+            const isStreaming = messages.some(m => m.loading || m.streaming)
+            if (isStreaming) return null
+            const isCorrelationPending = selected.has('correlation') && correlationQuestions.length === 0
+            const list = hasChip ? chipQuestions : SUGGESTED_QUESTIONS
+            return (
+              <div style={{ animation: 'item-fade-up 0.32s ease both' }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--ink-4)', letterSpacing: '.12em', textTransform: 'uppercase', marginBottom: 10 }}>
+                  建议问题
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {isCorrelationPending ? (
+                    <div style={{ fontSize: 12, color: 'var(--ink-3)', padding: '8px 0' }}>
+                      正在加载高优先级事件…
+                    </div>
+                  ) : (
+                    list.map(q => (
+                      <button key={q} onClick={() => doSend(q)}
+                        style={{
+                          textAlign: 'left', padding: '10px 14px',
+                          background: 'var(--pearl)', border: '1px solid var(--line-soft)', borderRadius: 10,
+                          fontSize: 13, color: 'var(--ink-2)', lineHeight: 1.5,
+                          cursor: 'pointer', transition: 'all .15s ease',
+                        }}
+                        onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--line-strong)'; e.currentTarget.style.background = 'var(--gold-wash)' }}
+                        onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--line-soft)'; e.currentTarget.style.background = 'var(--pearl)' }}
+                      >{q}</button>
+                    ))
+                  )}
+                </div>
+              </div>
+            )
+          })()}
         </div>
 
         {/* Input bar */}

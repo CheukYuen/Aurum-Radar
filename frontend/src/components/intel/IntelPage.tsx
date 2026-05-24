@@ -7,6 +7,61 @@ import type { DashboardSummary, IntelEvent } from '../../api'
 import type { Filters } from '../../api/types'
 
 const TABS = ['全部', '竞争', '产品', '社媒', '法规', '渠道', '宏观', '供应链']
+const PAGE_SIZE = 20
+
+function PaginationBar({ page, total, size, loading, onPageChange }: {
+  page: number
+  total: number
+  size: number
+  loading: boolean
+  onPageChange: (page: number) => void
+}) {
+  const totalPages = Math.max(1, Math.ceil(total / size))
+  const from = total === 0 ? 0 : (page - 1) * size + 1
+  const to = Math.min(page * size, total)
+
+  const btnStyle = (disabled: boolean): React.CSSProperties => ({
+    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+    width: 32, height: 32,
+    background: disabled ? 'var(--silk)' : 'var(--pearl)',
+    color: disabled ? 'var(--ink-4)' : 'var(--ink-2)',
+    border: '1px solid var(--line)',
+    borderRadius: 8,
+    cursor: disabled ? 'not-allowed' : 'pointer',
+    opacity: disabled ? 0.6 : 1,
+  })
+
+  return (
+    <div className="flex items-center justify-between flex-wrap gap-3" style={{ paddingTop: 4 }}>
+      <span style={{ fontSize: 11.5, color: 'var(--ink-3)', fontFamily: 'var(--font-mono)' }}>
+        {loading ? '加载中…' : total === 0 ? '暂无情报' : `共 ${total} 条 · 显示 ${from}–${to}`}
+      </span>
+      {total > size && (
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            disabled={loading || page <= 1}
+            onClick={() => onPageChange(page - 1)}
+            aria-label="上一页"
+            style={btnStyle(loading || page <= 1)}>
+            <Icon name="left" size={14} />
+          </button>
+          <span style={{ fontSize: 12, color: 'var(--ink-2)', fontFamily: 'var(--font-mono)', minWidth: 72, textAlign: 'center' }}>
+            {page} / {totalPages}
+          </span>
+          <button
+            type="button"
+            disabled={loading || page >= totalPages}
+            onClick={() => onPageChange(page + 1)}
+            aria-label="下一页"
+            style={btnStyle(loading || page >= totalPages)}>
+            <Icon name="right" size={14} />
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
 
 function StatCard({ icon, label, value, unit, delta, deltaKind = 'sage', sub }: {
   icon: string; label: string; value: string; unit: string;
@@ -42,6 +97,9 @@ function StatCard({ icon, label, value, unit, delta, deltaKind = 'sage', sub }: 
 
 export default function IntelPage({ filters }: { filters: Filters }) {
   const [tab, setTab] = useState('全部')
+  const [page, setPage] = useState(1)
+  const [total, setTotal] = useState(0)
+  const [loading, setLoading] = useState(false)
   const [events, setEvents] = useState<IntelEvent[]>([])
   const [activeId, setActiveId] = useState<string>('')
   const [summary, setSummary] = useState<DashboardSummary | null>(null)
@@ -56,15 +114,30 @@ export default function IntelPage({ filters }: { filters: Filters }) {
   }, [filters.country])
 
   useEffect(() => {
+    setPage(1)
+  }, [filters.country])
+
+  useEffect(() => {
     let cancelled = false
-    setActiveId('')
-    fetchEvents(tab, 1, 20, filters.country).then(res => {
+    setLoading(true)
+    fetchEvents(tab, page, PAGE_SIZE, filters.country).then(res => {
       if (cancelled) return
       setEvents(res.items)
+      setTotal(res.total)
       if (res.items.length > 0) setActiveId(res.items[0]!.id)
-    }).catch(console.error)
+      else setActiveId('')
+      setLoading(false)
+    }).catch(err => {
+      console.error(err)
+      if (!cancelled) setLoading(false)
+    })
     return () => { cancelled = true }
-  }, [tab, filters.country])
+  }, [tab, filters.country, page])
+
+  const changeTab = (t: string) => {
+    setPage(1)
+    setTab(t)
+  }
 
   const active = events.find(e => e.id === activeId) ?? events[0]
 
@@ -94,7 +167,7 @@ export default function IntelPage({ filters }: { filters: Filters }) {
         <div className="flex justify-between items-center flex-wrap gap-3">
           <div className="flex flex-wrap gap-1.5">
             {TABS.map(t => (
-              <button key={t} onClick={() => setTab(t)}
+              <button key={t} onClick={() => changeTab(t)}
                 style={{
                   padding: '8px 16px',
                   background: tab === t ? 'var(--gold-1)' : 'var(--pearl)',
@@ -117,6 +190,14 @@ export default function IntelPage({ filters }: { filters: Filters }) {
             <EventCard key={e.id} e={e} active={e.id === activeId} onClick={setActiveId} />
           ))}
         </div>
+
+        <PaginationBar
+          page={page}
+          total={total}
+          size={PAGE_SIZE}
+          loading={loading}
+          onPageChange={setPage}
+        />
       </div>
 
       {/* Right detail — sticky on large screens */}

@@ -13,6 +13,20 @@ interface EventCardProps {
   onClick: (id: string) => void
 }
 
+function formatSrcDetailDisplay(value: string): string {
+  const trimmed = value.trim()
+  if (!trimmed) return ''
+  try {
+    const url = new URL(trimmed)
+    const host = url.hostname.replace(/^www\./, '')
+    const path = url.pathname
+    if (!path || path === '/') return host
+    return `${host}${path}`
+  } catch {
+    return trimmed
+  }
+}
+
 // 烈度 1-5 视觉条
 function IntensityBar({ value }: { value: number }) {
   const v = Math.max(0, Math.min(5, value || 0))
@@ -46,7 +60,7 @@ export default function EventCard({ e, active, onClick }: EventCardProps) {
   return (
     <button onClick={() => onClick(e.id)}
       style={{
-        display: 'block', width: '100%', textAlign: 'left',
+        display: 'block', width: '100%', minWidth: 0, textAlign: 'left',
         padding: '16px 18px',
         background: active ? 'linear-gradient(180deg, var(--gold-wash), var(--pearl-warm))' : 'var(--pearl)',
         border: active ? '1px solid var(--line-strong)' : '1px solid var(--line-soft)',
@@ -54,6 +68,7 @@ export default function EventCard({ e, active, onClick }: EventCardProps) {
         cursor: 'pointer',
         boxShadow: active ? 'var(--shadow-md), var(--shadow-inner)' : 'var(--shadow-sm)',
         position: 'relative',
+        overflow: 'hidden',
         transition: 'all .15s ease',
       }}>
       <span style={{
@@ -89,12 +104,20 @@ export default function EventCard({ e, active, onClick }: EventCardProps) {
       <div style={{ fontSize: 13, color: 'var(--ink-2)', lineHeight: 1.55, marginBottom: 10 }}>
         {e.keyClaim || e.summary}
       </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-        <Icon name="source" size={12} style={{ color: 'var(--ink-4)' }} />
-        <span style={{ fontSize: 11.5, color: 'var(--ink-2)' }}>{e.source}</span>
-        <span style={{ color: 'var(--ink-4)', fontSize: 11 }}>|</span>
-        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10.5, color: 'var(--ink-3)' }}>{e.srcDetail}</span>
-        <span style={{ marginLeft: 'auto' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+        <Icon name="source" size={12} style={{ color: 'var(--ink-4)', flexShrink: 0 }} />
+        <span style={{ fontSize: 11.5, color: 'var(--ink-2)', flexShrink: 0 }}>{e.source}</span>
+        <span style={{ color: 'var(--ink-4)', fontSize: 11, flexShrink: 0 }}>|</span>
+        <span
+          title={e.srcDetail}
+          style={{
+            flex: 1, minWidth: 0,
+            fontFamily: 'var(--font-mono)', fontSize: 10.5, color: 'var(--ink-3)',
+            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+          }}>
+          {formatSrcDetailDisplay(e.srcDetail)}
+        </span>
+        <span style={{ flexShrink: 0 }}>
           <IntensityBar value={e.intensity} />
         </span>
       </div>
