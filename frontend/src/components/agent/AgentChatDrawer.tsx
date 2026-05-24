@@ -93,7 +93,6 @@ export default function AgentChatDrawer({ open, onClose, initialQuestion, curren
   const [showSuggestions, setShowSuggestions] = useState(false)
   const [chipCache, setChipCache] = useState<Map<ChipId, string>>(new Map())
   const [chipLoading, setChipLoading] = useState<Set<ChipId>>(new Set())
-  const [chipError, setChipError] = useState<Set<ChipId>>(new Set())
   const [inlineError, setInlineError] = useState('')
   const scrollRef = useRef<HTMLDivElement>(null)
 
@@ -163,7 +162,6 @@ export default function AgentChatDrawer({ open, onClose, initialQuestion, curren
       setShowSuggestions(false)
       setChipCache(new Map())
       setChipLoading(new Set())
-      setChipError(new Set())
       setInlineError('')
       sessionIdRef.current = null
       streamingRef.current = false
@@ -198,13 +196,9 @@ export default function AgentChatDrawer({ open, onClose, initialQuestion, curren
     // 拉取上下文数据（未缓存时）
     if (isSelecting && def.needsFetch && !chipCache.has(id)) {
       setChipLoading(prev => new Set([...prev, id]))
-      setChipError(prev => { const s = new Set(prev); s.delete(id); return s })
       try {
         const text = await buildChipContext(id, currentCountry)
         setChipCache(prev => new Map([...prev, [id, text]]))
-      } catch {
-        setChipError(prev => new Set([...prev, id]))
-        setSelected(prev => { const s = new Set(prev); s.delete(id); return s })
       } finally {
         setChipLoading(prev => { const s = new Set(prev); s.delete(id); return s })
       }
@@ -376,18 +370,16 @@ export default function AgentChatDrawer({ open, onClose, initialQuestion, curren
               {CHIP_DEFS.filter(d => d.id !== 'correlation').map(def => {
                 const isSelected = selected.has(def.id)
                 const isLoading = chipLoading.has(def.id)
-                const hasError = chipError.has(def.id)
                 return (
                   <button
                     key={def.id}
                     onClick={() => handleChipClick(def.id)}
-                    title={hasError ? '加载失败，点击重试' : undefined}
                     style={{
                       padding: '3px 10px', borderRadius: 20,
                       background: isSelected ? 'var(--gold-tint)' : 'var(--gold-wash)',
-                      border: `1px solid ${isSelected ? 'var(--gold-2)' : hasError ? '#c0392b' : 'var(--line)'}`,
+                      border: `1px solid ${isSelected ? 'var(--gold-2)' : 'var(--line)'}`,
                       fontSize: 11,
-                      color: isSelected ? 'var(--ink-1)' : hasError ? '#c0392b' : 'var(--ink-2)',
+                      color: isSelected ? 'var(--ink-1)' : 'var(--ink-2)',
                       fontWeight: isSelected ? 600 : 500,
                       cursor: 'pointer',
                       display: 'flex', alignItems: 'center', gap: 4,
@@ -403,8 +395,7 @@ export default function AgentChatDrawer({ open, onClose, initialQuestion, curren
                         animation: 'spin 0.7s linear infinite',
                       }} />
                     )}
-                    {hasError && !isLoading && <span>✕</span>}
-                    {isSelected && !isLoading && !hasError && (
+                    {isSelected && !isLoading && (
                       <span style={{ color: 'var(--gold-2)', fontSize: 10, lineHeight: 1 }}>✕</span>
                     )}
                     {def.label(currentCountry)}
